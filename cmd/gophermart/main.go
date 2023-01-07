@@ -11,7 +11,11 @@ import (
 
 func main() {
 	authStorage := localstorage.New()
-	authService := service.New(authStorage)
+	authService, err := service.New(authStorage)
+	if err != nil {
+		return
+	}
+	
 	authHandler := rest.New(authService)
 
 	e := echo.New()

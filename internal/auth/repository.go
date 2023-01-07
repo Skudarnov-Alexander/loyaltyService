@@ -7,6 +7,6 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, User *model.User) error
-	GetUser(ctx context.Context, username, password string) (*model.User, error)
+	CreateUser(ctx context.Context, u *model.User) error
+	GetUser(ctx context.Context, username string) (*model.User, error)
 }
