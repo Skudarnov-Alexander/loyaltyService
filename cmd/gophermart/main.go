@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest/middleware"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/repository/localstorage"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
 	"github.com/labstack/echo/v4"
@@ -23,16 +24,20 @@ func main() {
 	//routing
 	e.GET("/", hello)
 
-	e.POST("/api/user/register", authHandler.RegisterUser)
+	e.POST("/api/user/register", authHandler.RegisterUser(authHandler.LoginUser))
 	e.POST("/api/user/login", authHandler.LoginUser)
-	e.POST("/api/user/orders", postOrder)
 
-	e.GET("/api/user/orders", getOrder)
-	e.GET("/api/user/balance", getBalance)
+	g := e.Group("/api/user")
+	g.Use(middleware.Auth)
 
-	e.POST("/api/user/balance/withdraw", withdrawPoint)
+	g.POST("/orders", postOrder)
 
-	e.GET("/api/user/balance/withdrawals", getWithdrawal)
+	g.GET("/orders", getOrder)
+	g.GET("/balance", getBalance)
+
+	g.POST("/balance/withdraw", withdrawPoint)
+
+	g.GET("/balance/withdrawals", getWithdrawal)
 
 	e.Logger.Fatal(e.Start(":8080"))
 }

@@ -7,7 +7,7 @@ import (
 )
 
 type UserService interface {
-	SignUp(ctx context.Context, u *model.User) error 
-	SignIn(ctx context.Context, u *model.User) (string, error)
+	SignUp(ctx context.Context, u model.User) error 
+	SignIn(ctx context.Context, u model.User) (string, error)
 	//ParseToken()
 }

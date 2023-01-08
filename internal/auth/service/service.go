@@ -12,8 +12,12 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var sampleSecretKey = []byte("SecretYouShouldHide")
+var SampleSecretKey = []byte("SecretYouShouldHide")
 
+type Claims struct {
+	jwt.RegisteredClaims
+	Username string `json:"username"`
+}
 
 type AuthService struct {
 	userRepo auth.UserRepository
@@ -32,12 +36,13 @@ func New(userRepo auth.UserRepository) (*AuthService, error) {
 	}, nil
 }
 
-func (s *AuthService) SignUp(ctx context.Context, u *model.User) error {
+func (s *AuthService) SignUp(ctx context.Context, u model.User) error {
 	u.Password = hashPassword(u.Password, s.hashSalt)
 	return s.userRepo.CreateUser(ctx, u)
 }
 
-func (s *AuthService) SignIn(ctx context.Context, u *model.User) (string, error) {
+func (s *AuthService) SignIn(ctx context.Context, u model.User) (string, error) {
+	fmt.Printf("user from redirect %+v", u)
 	user, err := s.userRepo.GetUser(ctx, u.Username)
 	if err != nil {
 		return "", err
@@ -53,12 +58,6 @@ func (s *AuthService) SignIn(ctx context.Context, u *model.User) (string, error)
 
 }
 
-type Claims struct {
-	jwt.RegisteredClaims
-	Username string `json:"username"`
-}
-
-
 
 func generateJWT(username string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &Claims{
@@ -72,8 +71,8 @@ func generateJWT(username string) (string, error) {
 		},
 		Username:         username,
 	})
-	
-	str, err := token.SignedString(sampleSecretKey)
+	fmt.Println(SampleSecretKey)
+	str, err := token.SignedString(SampleSecretKey)
 	if err != nil {
 		fmt.Println(err)
 		return "", err

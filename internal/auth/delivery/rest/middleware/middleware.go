@@ -1,49 +1,43 @@
 package middleware
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
+	"strings"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/parser"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
 	"github.com/labstack/echo/v4"
 )
 
-
-
-
-func VerifyJWT(next echo.HandlerFunc) echo.HandlerFunc {
+func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		t, ok := c.Request().Header["Token"]
+		authHeader := c.Request().Header.Get("Authorization")
 
-		fmt.Println(t)
-		fmt.Println(ok)
-
-		if !ok {
-			return c.String(http.StatusBadRequest, "token header is empty")
+		if authHeader == "" {
+			err := errors.New("header Authorization is empty")
+			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
-		token, err := jwt.Parse(t[0], func(token *jwt.Token) (interface{}, error) {
-			_, ok := token.Method.(*jwt.SigningMethodECDSA)
-			if !ok {
-				c.String(http.StatusUnauthorized, "Unauthorized")
-				
-			}
+		headerParts := strings.Split(authHeader, " ")
+		if len(headerParts) != 2 {
+			err := errors.New("header Authorization is incorrect")
+			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		}
+
+		if headerParts[0] != "Bearer" {
+			err := errors.New("header Authorization is not Bearer")
+			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		}
 
 
-
-			return "", nil
-		})
-
+		err := parser.ParseToken(headerParts[1], service.SampleSecretKey)
 		if err != nil {
-			c.String(http.StatusInternalServerError, "JWT parsing error")
-		}
-
-		if !token.Valid {
-			c.String(http.StatusUnauthorized, "Unauthorized")
+			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
 		return next(c)
 		
-		
 	}
 }
+

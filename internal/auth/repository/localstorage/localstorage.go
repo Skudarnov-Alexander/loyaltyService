@@ -2,9 +2,9 @@ package localstorage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
@@ -18,10 +18,9 @@ func New() *Localstorage {
 	}
 }
 
-func (ls *Localstorage) CreateUser(ctx context.Context, u *model.User) error {
+func (ls *Localstorage) CreateUser(ctx context.Context, u model.User) error {
 	if _, ok := ls.storage[u.Username]; ok {
-		fmt.Println("login is exist")
-		return errors.New("login is exist")
+		return auth.ErrUserIsExist
 	}
 
 	ls.storage[u.Username] = u.Password
@@ -32,7 +31,7 @@ func (ls *Localstorage) CreateUser(ctx context.Context, u *model.User) error {
 func (ls *Localstorage) GetUser(ctx context.Context, username string) (*model.User, error) {
 	pwd, ok := ls.storage[username]
 	if !ok {
-		return nil, errors.New("user is not exist")
+		return nil, auth.ErrUserNotFound
 	}
 
 	return &model.User{
