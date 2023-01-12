@@ -6,7 +6,7 @@ import (
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
-type UserRepository interface {
+type AuthRepository interface {
 	CreateUser(ctx context.Context, u model.User) error
-	GetUser(ctx context.Context, username string) (*model.User, error)
+	GetUser(ctx context.Context, username string) (model.User, error)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 
 	"github.com/labstack/echo/v4"
+	"github.com/go-playground/validator/v10"
 )
 
 type response struct {
@@ -45,7 +46,12 @@ func (h *Handler) RegisterUser(next echo.HandlerFunc) echo.HandlerFunc {
 	if err := c.Bind(&user); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-
+	
+	validate := validator.New()
+	if err := validate.Struct(user); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	
 	err := h.service.SignUp(c.Request().Context(), user)
 	if errors.Is(err, auth.ErrUserIsExist) {
 		return echo.NewHTTPError(http.StatusConflict, err.Error())
