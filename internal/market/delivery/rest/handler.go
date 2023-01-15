@@ -1,10 +1,14 @@
 package rest
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest/dto"
 	"github.com/labstack/echo/v4"
 )
 
@@ -18,51 +22,130 @@ func New(s market.MarketService) *Handler {
 	}
 }
 
-type keyID string
-
-func setKey (c echo.Context, key keyID) {
-	c.Set("uuid", key)
-}
-
-func getKey (c echo.Context) (keyID, bool) {
-	val, ok := c.Get("uuid").(keyID)
-	return val, ok
-	
-}
-
-
 func (h *Handler) PostOrder(c echo.Context) error {
-		return c.String(http.StatusOK, "PostOrder")
+	userID := c.Get("uuid") //TODO асерт типа
+	/*
+		if !ok {
+			err := errors.New("uuid value is not string")
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+	*/
+
+	if userID == "" {
+		err := errors.New("uuid value in context is empty")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	data, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		log.Printf("read body error: %v", err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	orderID := string(data)
+
+	log.Printf("orderID from body: %s", orderID)
+	ctx := c.Request().Context()
+
+	if err := h.service.SaveOrder(ctx, userID.(string), orderID); err != nil {
+		log.Printf("service error: %v", err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 func (h *Handler) GetOrders(c echo.Context) error {
-	uuid, ok := getKey(c)
-	if !ok {
-		log.Fatal("keyID in context reading error")
+	c.Response().Header().Set("Content-Type", "application/json")
+	ctx := c.Request().Context()
+
+	userID := c.Get("uuid")
+
+	if userID == "" {
+		err := errors.New("uuid value in context is empty")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	return c.String(http.StatusOK, string(uuid))
-	
+
+	orders, err := h.service.FetchOrders(ctx, userID.(string))
+	if err != nil {
+		err := fmt.Errorf("service error %s", err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, orders)
+
 }
 
 func (h *Handler) GetBalance(c echo.Context) error {
-	return c.String(http.StatusOK, "GetBalance")
-	
+	c.Response().Header().Set("Content-Type", "application/json")
+	ctx := c.Request().Context()
+
+	userID := c.Get("uuid")
+
+	if userID == "" {
+		err := errors.New("uuid value in context is empty")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	balance, err := h.service.FetchBalance(ctx, userID.(string))
+	if err != nil {
+		err := fmt.Errorf("service error %s", err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, balance)
+
 }
 
 func (h *Handler) GetWithdrawals(c echo.Context) error {
-	return c.String(http.StatusOK, "GetWithdrawals")
-	
+	c.Response().Header().Set("Content-Type", "application/json")
+	ctx := c.Request().Context()
+
+	userID := c.Get("uuid")
+
+	if userID == "" {
+		err := errors.New("uuid value in context is empty")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	withdrawns, err := h.service.FetchWithdrawals(ctx, userID.(string))
+	if err != nil {
+		err := fmt.Errorf("service error %s", err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+        withdrawnsDTO := dto.WithdrawnToDTO(withdrawns...)
+
+	return c.JSON(http.StatusOK, withdrawnsDTO)
+
 }
 
 func (h *Handler) PostWithdrawal(c echo.Context) error {
-	return c.String(http.StatusOK, "PostWithdrawal")
-	
+	c.Response().Header().Set("Content-Type", "application/json")
+	ctx := c.Request().Context()
+
+	userID := c.Get("uuid")
+
+	if userID == "" {
+		err := errors.New("uuid value in context is empty")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	var wDTO dto.Withdrawn
+	if err := c.Bind(&wDTO); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+        w := dto.WithdrawnToModel(wDTO)
+
+	b, err := h.service.MakeWithdrawal(ctx, userID.(string), w)
+	if err != nil {
+		log.Printf("service error: %v", err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	bDTO := dto.BalanceToDTO(b)
+
+	return c.JSON(http.StatusOK, bDTO)
+
 }
-
-
-
-
-
-
-
-

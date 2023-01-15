@@ -12,7 +12,7 @@ import (
 
 type keyID string
 
-func setKey (c echo.Context, key keyID) {
+func setKey (c echo.Context, key string) {
 	c.Set("uuid", key)
 }
 
@@ -48,7 +48,7 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
-		setKey(c, keyID(uuid))
+		setKey(c, uuid)
 
 		return next(c)
 		

@@ -35,7 +35,8 @@ func InitDB(db *sqlx.DB) error {
 	(
 		user_id uuid PRIMARY KEY,
 		username varchar(16) NOT NULL,
-		password text NOT NULL
+		password text NOT NULL,
+		UNIQUE(username)
 	);
 	
 	CREATE TABLE orders
@@ -43,28 +44,37 @@ func InitDB(db *sqlx.DB) error {
 		order_id varchar(32) PRIMARY KEY,
 		status smallint DEFAULT 0,
 		accrual integer DEFAULT 0,
-		uploaded_at timestamp NOT NULL,
+		uploaded_at TIMESTAMP DEFAULT Now(),
 		fk_user_id uuid REFERENCES users(user_id) NOT NULL
 	);
 	
 	CREATE TABLE balances
 	(
-		current_balance integer DEFAULT 0 NOT NULL,
-		withdrawn integer,
-		fk_user_id uuid REFERENCES users(user_id) NOT NULL UNIQUE
+		current_balance real DEFAULT 500 NOT NULL,
+		withdrawn real DEFAULT 0,
+		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
+		UNIQUE(fk_user_id)
 	);
 	
 	CREATE TABLE purchases
 	(
 		purchase_id SERIAL PRIMARY KEY,
+		order_id varchar(32) NOT NULL,
 		sum integer NOT NULL,
-		processed_at timestamp NOT NULL,
-		fk_user_id uuid REFERENCES users(user_id) NOT NULL
+		processed_at TIMESTAMP DEFAULT Now(),
+		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
+		UNIQUE(order_id)
 	);
 	
 	INSERT INTO users
 	VALUES
-	('db61d134-aa52-49d9-a006-4e82e4d237ca', 'test', 'e1a9b8512ff9c6383e11c59b987aa596b5902b366190849079f0f3b622aaa2d2ef8dbfc3b3e35b266d9237d075e7432cf2afcbac85ec2e649eeb7cb1d5009d64');`
+	('db61d134-aa52-49d9-a006-4e82e4d237ca', 'test', '083ade633acab7c70de63b24c620eb36b7e388235af30d67568c2f000deb5d7e56d27177c6467d4d1526b425842543e4a3d9136bc014c17220a5f5396c78b3c9');
+	
+	INSERT INTO orders(order_id, uploaded_at, fk_user_id)
+	VALUES
+	('657883737','1999-01-08 04:05:06', 'db61d134-aa52-49d9-a006-4e82e4d237ca'),
+	('657887875','1999-01-23 04:05:06', 'db61d134-aa52-49d9-a006-4e82e4d237ca'),
+	('657887874','1999-04-23 04:05:06', 'db61d134-aa52-49d9-a006-4e82e4d237ca');`
 
 	if _, err := db.Exec(quary); err != nil {
 		return err
