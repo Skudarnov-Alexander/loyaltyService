@@ -3,7 +3,6 @@ package middleware
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/parser"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
@@ -31,6 +30,9 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
+		// Bearer auth
+		/*
+
 		headerParts := strings.Split(authHeader, " ")
 		if len(headerParts) != 2 {
 			err := errors.New("header Authorization is incorrect")
@@ -42,8 +44,10 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
+		*/
 
-		uuid, err := parser.ParseToken(headerParts[1], service.SampleSecretKey)
+
+		uuid, err := parser.ParseToken(authHeader, service.SampleSecretKey)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
