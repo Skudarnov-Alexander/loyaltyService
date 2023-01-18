@@ -108,6 +108,8 @@ func (h *Handler) LoginUser(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+
+	c.Response().Header().Add("Authorization", token)
 	
 	return c.JSON(http.StatusOK, newResponse(http.StatusOK, "auth is successfull", token))
 }
