@@ -114,14 +114,6 @@ func (h *Handler) LoginUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, newResponse(http.StatusOK, "auth is successfull", token))
 }
 
-/*
-Возможные коды ответа:
-
-- `200` — пользователь успешно аутентифицирован;
-- `400` — неверный формат запроса;
-- `401` — неверная пара логин/пароль;
-- `500` — внутренняя ошибка сервера.
-*/
 
 
 
