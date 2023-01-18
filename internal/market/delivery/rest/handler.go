@@ -73,15 +73,15 @@ func (h *Handler) PostOrder(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	div := luhn.CalculateLuhn(number)
-	if div != 0 {
-		log.Printf("orderID is incorrect. Add %d to last num", div)
+	ok := luhn.CalculateLuhn(number)
+	if !ok {
+		//log.Printf("orderID is incorrect. Add %d to last num", div)
                 return echo.NewHTTPError(http.StatusUnprocessableEntity, market.ErrFormatOrderID)
 	}
 
 	ctx := c.Request().Context()
 
-        ok, err := h.service.CheckOrder(ctx, userID.(string), orderID)
+        ok, err = h.service.CheckOrder(ctx, userID.(string), orderID)
         if err != nil {
                 log.Printf("service error: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())

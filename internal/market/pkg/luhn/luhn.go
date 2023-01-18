@@ -1,12 +1,11 @@
 package luhn
 
-func CalculateLuhn(number int) int {
+func CalculateLuhn(number int) bool {
+        lastNumber := number % 10
 	checkNumber := checksum(number)
 
-	if checkNumber == 0 {
-		return 0
-	}
-	return 10 - checkNumber
+	return checkNumber == lastNumber 
+
 }
 
 func checksum(number int) int {
