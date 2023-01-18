@@ -1,21 +1,30 @@
 package luhn
 
-func CalculateLuhn(number int) bool {
-        var check int
+import "fmt"
 
+/*
+func CalculateLuhn(number int) bool {
         lastNumber := number % 10
-	checkNumber := checksum(number)
+	checkNumber := Checksum(number)
+
+        fmt.Printf("lastNumber %d", lastNumber)
+        fmt.Printf("checkNumber %d", checkNumber)
 
         if checkNumber == 0 {
-                return check == lastNumber 
+                return checkNumber == lastNumber
         }
-        
-	return 10 - checkNumber == lastNumber 
+
+
+
+	return 10 - checkNumber == lastNumber
 
 }
-
-func checksum(number int) int {
+*/
+//354835541278
+func Checksum(number int) int {
 	var luhn int
+        lastNumber := number % 10
+        number = number / 10
 
 	for i := 0; number > 0; i++ {
 		cur := number % 10
@@ -29,6 +38,8 @@ func checksum(number int) int {
 
 		luhn += cur
 		number = number / 10
+                
 	}
+        fmt.Printf("luhn %d\n", luhn + lastNumber)
 	return luhn % 10
 }
