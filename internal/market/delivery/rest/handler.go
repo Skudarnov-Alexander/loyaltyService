@@ -6,9 +6,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest/dto"
+        "github.com/Skudarnov-Alexander/loyaltyService/internal/market/pkg/luhn"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -22,6 +26,16 @@ func New(s market.MarketService) *Handler {
 	}
 }
 
+type Response struct {
+        Message string `json:"message"`
+}
+
+func NewResponse(msg string) Response {
+        return Response{
+        	Message: msg,
+        }
+}
+
 func (h *Handler) PostOrder(c echo.Context) error {
 	userID := c.Get("uuid") //TODO асерт типа
 	/*
@@ -32,28 +46,75 @@ func (h *Handler) PostOrder(c echo.Context) error {
 	*/
 
 	if userID == "" {
+                log.Print("uuid value in context is empty")
 		err := errors.New("uuid value in context is empty")
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error()) //TODO error/log handler
 	}
+
+        ct := c.Request().Header.Get("Content-Type")
+        if !strings.Contains(ct, "text/plain") {
+                err := errors.New("header Content-Type is not text/plain")
+                return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+        }
 
 	data, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		log.Printf("read body error: %v", err)
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+
+        
+        // TODO как првоерить пустое body?
+        
 
 	orderID := string(data)
-
-	log.Printf("orderID from body: %s", orderID)
-	ctx := c.Request().Context()
-
-	if err := h.service.SaveOrder(ctx, userID.(string), orderID); err != nil {
-		log.Printf("service error: %v", err)
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+        number, err := strconv.Atoi(orderID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	return c.NoContent(http.StatusOK)
+	div := luhn.CalculateLuhn(number)
+	if div != 0 {
+		log.Printf("orderID is incorrect. Add %d to last num", div)
+                return echo.NewHTTPError(http.StatusUnprocessableEntity, market.ErrFormatOrderID)
+	}
+
+	ctx := c.Request().Context()
+
+        ok, err := h.service.CheckOrder(ctx, userID.(string), orderID)
+        if err != nil {
+                log.Printf("service error: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+        }
+
+        if ok {
+                return c.JSON(http.StatusOK, NewResponse("order is loaded yet"))
+        }
+
+	if err := h.service.SaveOrder(ctx, userID.(string), orderID); err != nil {
+                if errors.Is (err, market.ErrOrderIsExist) {
+                        log.Printf("%v", err)
+                        return echo.NewHTTPError(http.StatusConflict, err.Error())   
+                }
+		log.Printf("service error: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+        
+	return c.JSON(http.StatusAccepted, NewResponse("new order is loaded"))
 }
+
+/*
+Возможные коды ответа:
+
+- `200` — номер заказа уже был загружен этим пользователем;     +
+- `202` — новый номер заказа принят в обработку;                +
+- `400` — неверный формат запроса;                              +
+- `401` — пользователь не аутентифицирован;                     +
+- `409` — номер заказа уже был загружен другим пользователем;   +
+- `422` — неверный формат номера заказа;                        +
+- `500` — внутренняя ошибка сервера.                            +
+*/
 
 func (h *Handler) GetOrders(c echo.Context) error {
 	c.Response().Header().Set("Content-Type", "application/json")

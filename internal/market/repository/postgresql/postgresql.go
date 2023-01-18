@@ -2,13 +2,19 @@ package postgresql
 
 import (
 	"context"
+	//"database/sql"
 	"errors"
 	"log"
 
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql/dto"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
-	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var DSN string = "postgres://postgres:postgres@localhost:5432/marketDB"
@@ -23,21 +29,50 @@ func New(db *sqlx.DB) (*PostrgeSQL, error) {
 	}, nil
 }
 
+func (p *PostrgeSQL) CheckOrder(ctx context.Context, userID, orderID string) (bool, error) {
+	quary := `SELECT EXISTS 
+        (
+                SELECT *
+                FROM orders
+                WHERE order_number = $1 AND fk_user_id = $2
+        );`
+
+	tx, err := p.db.Beginx()
+	if err != nil {
+		return false, err
+	}
+
+	defer tx.Rollback()
+
+	stmt, err := tx.PreparexContext(ctx, quary)
+	if err != nil {
+		return false, err
+	}
+
+	defer stmt.Close()
+
+	var ok bool
+	if err := stmt.Get(&ok, orderID, userID); err != nil {
+		return false, err
+	}
+
+	return ok, tx.Commit()
+
+}
+
 func (p *PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) error {
-	quary := `INSERT INTO orders(order_id, fk_user_id)
+	quary := `INSERT INTO orders(order_number, fk_user_id)
 	VALUES
 	($1, $2);`
 
-	//('657883737','1999-01-08 04:05:06', 'db61d134-aa52-49d9-a006-4e82e4d237ca');`
-
-	tx, err := p.db.Begin()
+	tx, err := p.db.Beginx()
 	if err != nil {
 		return err
 	}
 
 	defer tx.Rollback()
 
-	stmt, err := tx.PrepareContext(ctx, quary)
+	stmt, err := tx.PreparexContext(ctx, quary)
 	if err != nil {
 		return err
 	}
@@ -45,6 +80,10 @@ func (p *PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) er
 	defer stmt.Close()
 
 	if _, err := stmt.ExecContext(ctx, orderID, userID); err != nil {
+		if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation {
+			return market.ErrOrderIsExist
+		}
+
 		return err
 	}
 
@@ -52,7 +91,7 @@ func (p *PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) er
 }
 
 func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.Order, error) {
-	quary := `SELECT order_id, status, accrual, uploaded_at
+	quary := `SELECT order_number, status, accrual, uploaded_at
 	FROM orders
 	WHERE fk_user_id = $1
 	ORDER BY uploaded_at;`
@@ -174,7 +213,7 @@ func loadNewBalance(ctx context.Context, db *sqlx.DB, userID string, w dto.Withd
 }
 
 func updateBalance(ctx context.Context, db *sqlx.DB, userID string, b dto.BalanceDTO) (dto.BalanceDTO, error) {
-        quary := `UPDATE balances
+	quary := `UPDATE balances
         SET
                 current_balance = $1,
                 withdrawn = $2
@@ -223,14 +262,14 @@ func (p *PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w mode
 		return model.Balance{}, err
 	}
 
-        bNew, err := updateBalance(ctx, p.db, userID, bDTO)
-        if err != nil {
-                return model.Balance{}, err
-        }
+	bNew, err := updateBalance(ctx, p.db, userID, bDTO)
+	if err != nil {
+		return model.Balance{}, err
+	}
 
-        b := dto.BalanceToModel(bNew)
+	b := dto.BalanceToModel(bNew)
 
-        return b, nil
+	return b, nil
 }
 
 func (p *PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]model.Withdrawn, error) {
@@ -269,20 +308,3 @@ func (p *PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]mo
 
 	return withdrawns, tx.Commit()
 }
-
-/*
-{
-          "order": "2377225624",
-          "sum": 500,
-          "processed_at": "2020-12-09T16:09:57+03:00"
-      }
-
-
-      (
-		purchase_id SERIAL PRIMARY KEY,
-		order_id varchar(32) NOT NULL,
-		sum integer NOT NULL,
-		processed_at timestamp DEFAULT NULL,
-		fk_user_id uuid REFERENCES users(user_id) NOT NULL
-	);
-*/

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	authr "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest/middleware"
@@ -11,12 +13,20 @@ import (
 	marketr "github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest"
 	marketdb "github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql"
 	markets "github.com/Skudarnov-Alexander/loyaltyService/internal/market/service"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/config"
 
 	"github.com/labstack/echo/v4"
 )
 
 func main() {
-	db, err := database.New()
+	cfg, err := config.New()
+	if err != nil {
+		log.Panic(err)
+	}
+
+	ctx := context.Background()
+
+	db, err := database.New(cfg.DBAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,6 +58,14 @@ func main() {
 	}
 
 	marketHandler := marketr.New(marketService)
+
+	accrualService := markets.NewAccrualService(marketStorage, time.Minute)
+	go func() {
+		err := accrualService.Run(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	e := echo.New()
 

@@ -15,10 +15,12 @@ require (
 )
 
 require (
+	github.com/caarlos0/env/v6 v6.10.1
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
+	github.com/go-resty/resty/v2 v2.7.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/jackc/pgconn v1.13.0
 	github.com/jackc/pgtype v1.13.0

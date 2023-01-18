@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
+	"github.com/google/uuid"
 	"github.com/jackc/pgtype"
 )
 
@@ -16,10 +17,12 @@ const (
 )
 
 type OrderDTO struct {
-	Number     string           `db:"order_id"`
-	Status     int64            `db:"status"`
-	Accrual    int64            `db:"accrual"`
-	UploadedAt pgtype.Timestamp `db:"uploaded_at"`
+	ID		   int64            `db:"order_id,omitempty"`
+	Number     string           `db:"order_number,omitempty"`
+	Status     int64            `db:"status,omitempty"`
+	Accrual    float64          `db:"accrual,omitempty"`
+	UploadedAt pgtype.Timestamp `db:"uploaded_at,omitempty"`
+	UserID 	   uuid.UUID 		`db:"fk_user_id,omitempty"`
 }
 
 func OrdersToModel(ordersDTO []OrderDTO) ([]model.Order, error) {
