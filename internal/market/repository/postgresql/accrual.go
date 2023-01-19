@@ -3,17 +3,17 @@ package postgresql
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql/dto"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
-const LIMIT_ORDERS int64 = 5
-
+const limitWorkers int64 = 5
 
 func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual, error) {
-	quary := `SELECT order_number
+	quary := `SELECT order_number, fk_user_id
 	FROM orders
 	WHERE status = 0
 	ORDER BY uploaded_at
@@ -34,7 +34,7 @@ func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual,
 	defer stmt.Close()
 
 	var accrualsDTO []dto.Accrual
-	err = stmt.Select(&accrualsDTO, LIMIT_ORDERS)
+	err = stmt.Select(&accrualsDTO, limitWorkers)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals 
 }
 
 func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Accrual) error { //TODO батчи?
-        var status int64
+	var status int64
 
 	switch a.Status {
 	case "INVALID":
@@ -105,7 +105,6 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 		return errors.New("invalid status from DB")
 	}
 
-        
 	quary := `UPDATE orders
 	SET
 		status = $1,
@@ -125,7 +124,6 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 
 	defer stmt.Close()
 
-	
 	rows, err := stmt.QueryxContext(ctx, status, a.Accrual, a.Number)
 	if err != nil {
 		tx.Rollback()
@@ -146,7 +144,51 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 
 	log.Printf("Change status: %+v", accrualsDTO)
 	rows.Close()
-	
+
+	return tx.Commit()
+}
+
+func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.Accrual) error {
+        log.Printf("Зашел в изменение баланса %+v", a)
+	quary := `UPDATE balances
+        SET
+	        current_balance = current_balance + $1
+        WHERE fk_user_id = $2
+        RETURNING current_balance;`
+
+	tx, err := p.db.Beginx()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.PreparexContext(ctx, quary)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	rows, err := stmt.QueryxContext(ctx, a.Accrual, a.UserID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if rows.Err() != nil {
+                fmt.Print("зашел в rows.Err")
+		return rows.Err()
+	}
+
+	rows.Next()
+
+	var balanceDTO dto.BalanceDTO
+	err = rows.StructScan(&balanceDTO)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Change balance. Add: %f Current: %f", a.Accrual, balanceDTO.Current)
+	rows.Close()
 
 	return tx.Commit()
 }

@@ -2,24 +2,13 @@ package middleware
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/parser"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
 	"github.com/labstack/echo/v4"
 )
-
-type keyID string
-
-func setKey (c echo.Context, key string) {
-	c.Set("uuid", key)
-}
-
-func getKey (c echo.Context) (keyID, bool) {
-	val, ok := c.Get("uuid").(keyID)
-	return val, ok
-	
-}
 
 func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -52,7 +41,9 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
-		setKey(c, uuid)
+		log.Printf("UUID in middleware: %s", uuid)
+
+		c.Set("uuid", uuid)
 
 		return next(c)
 		

@@ -54,6 +54,11 @@ func fanOut(inputCh chan model.Accrual, stop <-chan bool, limitWorkers int) []ch
     return chs
 } 
 
+type AccrualResp struct {
+        Number  string	        `json:"order"`
+        Status  string		`json:"status"`
+        Accrual float64		`json:"accrual"`
+}
 
 
 func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
@@ -65,7 +70,7 @@ func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
                                 log.Print("START LOOP")
                                 URL := fmt.Sprintf("/api/orders/%s", a.Number)
                                 resp, err := client.R().
-                                SetResult(model.Accrual{}).
+                                SetResult(AccrualResp{}).
                                 Get(URL)
 
                                 if err != nil {
@@ -73,15 +78,22 @@ func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
                                         return
                                 }
 
-                                accrual := resp.Result().(*model.Accrual)
+                                accrualResp := resp.Result().(*AccrualResp)
                                 
-                                log.Printf("Получен статус заказа по HTTP: %+v", accrual)
-                                if accrual.Status == "REGISTERED" || accrual.Status == "PROCESSING" {
-                                        time.Sleep(time.Minute)
+                                log.Printf("Получен статус заказа по HTTP: %+v", accrualResp)
+                                if accrualResp.Status == "REGISTERED" || accrualResp.Status == "PROCESSING" {
+                                        time.Sleep(15 * time.Second)
                                         continue
                                 }
 
-                                out <- *accrual
+                                accrual := model.Accrual{
+                                	Number:  accrualResp.Number,
+                                	Status:  accrualResp.Status,
+                                	Accrual: accrualResp.Accrual,
+                                	UserID:  a.UserID,
+                                }
+
+                                out <- accrual
                                 done = true
                         } 
                         log.Printf("worker #%d stop working with accrual: %s", i, a.Number)

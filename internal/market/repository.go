@@ -19,4 +19,5 @@ type AccrualRepository interface {
 	TakeOrdersForProcess(ctx context.Context) ([]model.Accrual, error)
 	ChangeStatusOrdersForProcess(ctx context.Context, accruals ...model.Accrual) error
 	UpdateStatusProcessedOrders(ctx context.Context, a model.Accrual) error
+	UpdateBalanceProcessedOrders(ctx context.Context, a model.Accrual) error
 }

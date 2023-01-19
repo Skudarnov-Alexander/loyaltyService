@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -24,8 +25,9 @@ func NewAccrualService(db market.AccrualRepository, pollInt time.Duration) *Accr
 }
 
 func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
+	URL := fmt.Sprintf("http://%s", accrualAddr)
 	client := resty.New().
-		SetBaseURL(accrualAddr)
+		SetBaseURL(URL)
 	
 
 	var count int64
@@ -68,7 +70,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 			log.Printf("Записали в обший канал %+v", a)
 		}
 
-		if count == 5 {
+		if count == 1000 { //TODO stop go
 			break
 		}
 	}
@@ -86,6 +88,11 @@ func readWorker(ctx context.Context, db market.AccrualRepository, in chan model.
                      log.Printf("readWorker error: %s", err)
                      return err
               }
+
+			  if err := db.UpdateBalanceProcessedOrders(ctx, accrual); err != nil {
+				log.Printf("readWorker error: %s", err)
+				return err
+		 }
        }
 
        return nil

@@ -37,13 +37,15 @@ func NewResponse(msg string) Response {
 }
 
 func (h *Handler) PostOrder(c echo.Context) error {
-	userID := c.Get("uuid") //TODO асерт типа
-	/*
-		if !ok {
-			err := errors.New("uuid value is not string")
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-	*/
+	userID, ok := c.Get("uuid").(string) //TODO асерт типа
+        
+        log.Printf("UUID fron handler PostOrder: %s", userID)
+	
+	if !ok {
+		err := errors.New("uuid value is not string")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	
 
 	if userID == "" {
                 log.Print("uuid value in context is empty")
@@ -83,7 +85,7 @@ func (h *Handler) PostOrder(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-        ok, err := h.service.CheckOrder(ctx, userID.(string), orderID)
+        ok, err = h.service.CheckOrder(ctx, userID, orderID)
         if err != nil {
                 log.Printf("service error: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -93,7 +95,7 @@ func (h *Handler) PostOrder(c echo.Context) error {
                 return c.JSON(http.StatusOK, NewResponse("order is loaded yet"))
         }
 
-	if err := h.service.SaveOrder(ctx, userID.(string), orderID); err != nil {
+	if err := h.service.SaveOrder(ctx, userID, orderID); err != nil {
                 if errors.Is (err, market.ErrOrderIsExist) {
                         log.Printf("%v", err)
                         return echo.NewHTTPError(http.StatusConflict, err.Error())   
@@ -127,7 +129,7 @@ func (h *Handler) GetOrders(c echo.Context) error {
 	}
 
         ctx := c.Request().Context()
-        
+
 	orders, err := h.service.FetchOrders(ctx, userID)
 	if err != nil {
 		err := fmt.Errorf("service error %s", err.Error())

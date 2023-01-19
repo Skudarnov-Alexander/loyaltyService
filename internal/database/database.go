@@ -52,7 +52,7 @@ func InitDB(db *sqlx.DB) error {
 	CREATE TABLE balances
 	(
 		current_balance real DEFAULT 0 NOT NULL,
-		withdrawn real DEFAULT 0,
+		withdrawn real DEFAULT 0 NOT NULL,
 		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
 		UNIQUE(fk_user_id)
 	);
@@ -70,6 +70,10 @@ func InitDB(db *sqlx.DB) error {
 	INSERT INTO users
 	VALUES
 	('db61d134-aa52-49d9-a006-4e82e4d237ca', 'test', '083ade633acab7c70de63b24c620eb36b7e388235af30d67568c2f000deb5d7e56d27177c6467d4d1526b425842543e4a3d9136bc014c17220a5f5396c78b3c9');
+	
+	INSERT INTO balances(fk_user_id)
+	VALUES
+	('db61d134-aa52-49d9-a006-4e82e4d237ca');
 	
 	INSERT INTO orders(order_number, status, fk_user_id)
 	VALUES
