@@ -51,7 +51,7 @@ func InitDB(db *sqlx.DB) error {
 	
 	CREATE TABLE balances
 	(
-		current_balance real DEFAULT 500 NOT NULL,
+		current_balance real DEFAULT 0 NOT NULL,
 		withdrawn real DEFAULT 0,
 		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
 		UNIQUE(fk_user_id)
