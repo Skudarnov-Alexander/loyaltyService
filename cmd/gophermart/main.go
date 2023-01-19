@@ -59,7 +59,7 @@ func main() {
 
 	marketHandler := marketr.New(marketService)
 
-	accrualService := markets.NewAccrualService(marketStorage, time.Minute)
+	accrualService := markets.NewAccrualService(marketStorage, 5 * time.Second)
 	go func() {
 		err := accrualService.Run(ctx)
 		if err != nil {

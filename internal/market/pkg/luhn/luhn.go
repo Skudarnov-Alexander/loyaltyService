@@ -21,9 +21,17 @@ func CalculateLuhn(number int) bool {
 }
 */
 //354835541278
-func Checksum(number int) int {
-	var luhn int
-        lastNumber := number % 10
+func Checksum(number int, len int) int {
+        var isEvenNumDigits bool 
+
+        if len % 2 == 0 {
+                isEvenNumDigits = true
+        } 
+
+        _ = isEvenNumDigits
+	
+        luhn := number % 10
+        //lastNumber := number % 10
         number = number / 10
 
 	for i := 0; number > 0; i++ {
@@ -40,6 +48,6 @@ func Checksum(number int) int {
 		number = number / 10
                 
 	}
-        fmt.Printf("luhn %d\n", luhn + lastNumber)
+        fmt.Printf("luhn %d\n", luhn)
 	return luhn % 10
 }

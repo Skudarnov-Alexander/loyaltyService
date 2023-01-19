@@ -73,7 +73,8 @@ func (h *Handler) PostOrder(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	n := luhn.Checksum(number)
+        l := len(orderID)
+	n := luhn.Checksum(number, l)
         fmt.Println(n)
 	if n != 0 {
 		//log.Printf("orderID is incorrect. Add %d to last num", div)
