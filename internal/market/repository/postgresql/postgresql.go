@@ -110,14 +110,14 @@ func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.O
 
 	defer stmt.Close()
 
-	var ordersDTO []dto.OrderDTO
+	var ordersDTO []dto.Order
 
 	err = stmt.Select(&ordersDTO, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	orders, err := dto.OrdersToModel(ordersDTO)
+	orders, err := dto.OrderToModel(ordersDTO...)
 	if err != nil {
 		return nil, err
 	}

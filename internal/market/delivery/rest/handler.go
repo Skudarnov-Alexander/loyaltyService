@@ -11,7 +11,7 @@ import (
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest/dto"
-        "github.com/Skudarnov-Alexander/loyaltyService/internal/market/pkg/luhn"
+        "github.com/Skudarnov-Alexander/loyaltyService/internal/pkg/luhn"
 
 	"github.com/labstack/echo/v4"
 )
@@ -119,23 +119,25 @@ func (h *Handler) PostOrder(c echo.Context) error {
 */
 
 func (h *Handler) GetOrders(c echo.Context) error {
-	c.Response().Header().Set("Content-Type", "application/json")
-	ctx := c.Request().Context()
-
-	userID := c.Get("uuid")
+	userID := c.Get("uuid").(string) // TODO context interface my own
 
 	if userID == "" {
 		err := errors.New("uuid value in context is empty")
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	orders, err := h.service.FetchOrders(ctx, userID.(string))
+        ctx := c.Request().Context()
+        
+	orders, err := h.service.FetchOrders(ctx, userID)
 	if err != nil {
 		err := fmt.Errorf("service error %s", err.Error())
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, orders)
+        ordersDTO := dto.OrderToDTO(orders...)
+
+        c.Response().Header().Set("Content-Type", "application/json")
+	return c.JSON(http.StatusOK, ordersDTO)
 
 }
 

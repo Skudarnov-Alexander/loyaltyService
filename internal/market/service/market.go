@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"log"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
@@ -27,14 +26,11 @@ func (s MarketService) SaveOrder(ctx context.Context, userID, orderID string) er
 }
 
 func (s MarketService) CheckOrder(ctx context.Context, userID, orderID string) (bool, error) {
-	exist, err := s.db.CheckOrder(ctx, userID, orderID)
+	isExist, err := s.db.CheckOrder(ctx, userID, orderID)
 	if err != nil {
 		return false, err
 	}
-
-	log.Printf("exist order %v", exist)
-
-	return exist, nil
+	return isExist, nil
 }
 
 func (s MarketService) FetchOrders(ctx context.Context, userID string) ([]model.Order, error) {

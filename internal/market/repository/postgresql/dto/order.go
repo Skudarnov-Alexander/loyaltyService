@@ -1,12 +1,13 @@
 package dto
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 	"github.com/google/uuid"
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -16,16 +17,16 @@ const (
 	PROCESSED
 )
 
-type OrderDTO struct {
+type Order struct {
 	ID		   int64            `db:"order_id,omitempty"`
 	Number     string           `db:"order_number,omitempty"`
 	Status     int64            `db:"status,omitempty"`
-	Accrual    float64          `db:"accrual,omitempty"`
+	Accrual    sql.NullFloat64  `db:"accrual,omitempty"`
 	UploadedAt pgtype.Timestamp `db:"uploaded_at,omitempty"`
 	UserID 	   uuid.UUID 		`db:"fk_user_id,omitempty"`
 }
 
-func OrdersToModel(ordersDTO []OrderDTO) ([]model.Order, error) {
+func OrderToModel(ordersDTO ...Order) ([]model.Order, error) {
 	var orders []model.Order
 
 	for _, o := range ordersDTO {
@@ -54,10 +55,10 @@ func OrdersToModel(ordersDTO []OrderDTO) ([]model.Order, error) {
 			return nil, errors.New("error type assertion timestamp")
 		}
 
-		order := model.Order{
+		order := model.Order{ //TODO pointer in model
 			Number:     o.Number,
 			Status:     status,
-			Accrual:    o.Accrual,
+			Accrual:    o.Accrual.Float64,
 			UploadedAt: timeStamp.Format(time.RFC3339),
 		}
 
