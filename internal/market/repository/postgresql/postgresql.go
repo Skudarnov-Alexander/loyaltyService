@@ -17,8 +17,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-var DSN string = "postgres://postgres:postgres@localhost:5432/marketDB"
-
 type PostrgeSQL struct {
 	db *sqlx.DB
 }
@@ -245,6 +243,10 @@ func updateBalance(ctx context.Context, db *sqlx.DB, userID string, b dto.Balanc
 	if err := rows.StructScan(&bNew); err != nil {
 		log.Printf("structScat error %s", err.Error())
 		return dto.BalanceDTO{}, err
+	}
+
+	if rows.Err() != nil {
+		return dto.BalanceDTO{}, rows.Err()
 	}
 
 	return bNew, tx.Commit()

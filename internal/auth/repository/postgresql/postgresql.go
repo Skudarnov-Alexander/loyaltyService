@@ -146,16 +146,21 @@ func (p PostrgeSQL) GetUser(ctx context.Context, username string) (model.User, e
 
 	defer stmt.Close()
 
-	row, err := stmt.QueryxContext(ctx, username)
+	rows, err := stmt.QueryxContext(ctx, username)
 	if err != nil {
 		log.Printf("QueryxContext err: %s", err.Error())
 		return model.User{}, err
 	}
 
+	if rows.Err() != nil {
+		return model.User{}, rows.Err()
+	}
+
 	var user User
 
-	row.Next()
-	err = row.StructScan(&user)
+	rows.Next()
+
+	err = rows.StructScan(&user)
 	if err != nil {
 		log.Printf("StructScan err: %s", err.Error())
 		return model.User{}, err
