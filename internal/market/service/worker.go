@@ -82,7 +82,7 @@ func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
                                 
                                 log.Printf("Получен статус заказа по HTTP: %+v", accrualResp)
                                 if accrualResp.Status == "REGISTERED" || accrualResp.Status == "PROCESSING" {
-                                        time.Sleep(15 * time.Second)
+                                        time.Sleep(3 * time.Second)
                                         continue
                                 }
 
