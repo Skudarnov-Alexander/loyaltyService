@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
@@ -34,6 +35,8 @@ func (s MarketService) CheckOrder(ctx context.Context, userID, orderID string) (
 }
 
 func (s MarketService) FetchOrders(ctx context.Context, userID string) ([]model.Order, error) {
+	uuid := ctx.Value("uuid").(string)
+	log.Printf("Sevice.FetchOrders [%s]", uuid)
 	orders, err := s.db.SelectOrders(ctx, userID)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest/dto"
-        "github.com/Skudarnov-Alexander/loyaltyService/internal/pkg/luhn"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/pkg/luhn"
 
 	"github.com/labstack/echo/v4"
 )
@@ -122,15 +123,15 @@ func (h *Handler) PostOrder(c echo.Context) error {
 
 func (h *Handler) GetOrders(c echo.Context) error {
 	userID := c.Get("uuid").(string) // TODO context interface my own
-        log.Printf("UUID from handler PostOrder: %s", userID)
+        log.Printf("UUID from handler GetOrders: %s", userID)
 
 	if userID == "" {
 		err := errors.New("uuid value in context is empty")
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-
-        ctx := c.Request().Context()
-
+        
+        ctx := context.WithValue(c.Request().Context(), "uuid", c.Get("uuid"))  
+        
 	orders, err := h.service.FetchOrders(ctx, userID)
 	if err != nil {
 		err := fmt.Errorf("service error %s", err.Error())
