@@ -23,7 +23,7 @@ func NewAccrualService(db market.AccrualRepository, pollInt time.Duration) *Accr
 	}
 }
 
-func (s AccrualService) Run(ctx context.Context) error {
+func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 	client := resty.New().
 		SetBaseURL("http://127.0.0.1:8082")
 	

@@ -61,7 +61,7 @@ func main() {
 
 	accrualService := markets.NewAccrualService(marketStorage, 5 * time.Second)
 	go func() {
-		err := accrualService.Run(ctx)
+		err := accrualService.Run(ctx, cfg.AccrualAddr)
 		if err != nil {
 			log.Fatal(err)
 		}
