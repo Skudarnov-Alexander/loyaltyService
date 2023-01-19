@@ -48,7 +48,7 @@ func createBalance(ctx context.Context, db *sqlx.DB, userID string) error {
 
 	defer stmt.Close()
 
-	_, err = stmt.QueryxContext(ctx, userID)
+	_, err = stmt.ExecContext(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func createNewUser(ctx context.Context, db *sqlx.DB, u model.User) error {
 
 	defer stmt.Close()
 
-	_, err = stmt.QueryxContext(ctx, u.ID, u.Username, u.Password)
+	_, err = stmt.ExecContext(ctx, u.ID, u.Username, u.Password)
 	log.Printf("%T", err)
 	log.Printf("err: %v\n", err)
 

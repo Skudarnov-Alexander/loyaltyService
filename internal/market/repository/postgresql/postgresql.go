@@ -153,9 +153,6 @@ func (p *PostrgeSQL) SelectBalance(ctx context.Context, userID string) (model.Ba
 	}
 
 	balance := dto.BalanceToModel(balanceDTO)
-	if err != nil {
-		return model.Balance{}, err
-	}
 
 	return balance, tx.Commit()
 }

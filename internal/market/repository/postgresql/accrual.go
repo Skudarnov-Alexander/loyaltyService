@@ -74,6 +74,10 @@ func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals 
 			return err
 		}
 
+		if rows.Err() != nil {
+			return rows.Err()
+		}
+
 		rows.Next()
 
 		var accrualsDTO dto.Accrual
@@ -126,6 +130,10 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 	if err != nil {
 		tx.Rollback()
 		return err
+	}
+
+	if rows.Err() != nil {
+		return rows.Err()
 	}
 
 	rows.Next()
