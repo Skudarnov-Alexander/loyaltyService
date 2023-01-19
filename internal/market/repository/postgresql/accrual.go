@@ -86,7 +86,7 @@ func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals 
 			return err
 		}
 
-		log.Printf("Change status: %+v", accrualsDTO)
+		log.Printf("Change status for processing: %+v", accrualsDTO)
 		rows.Close()
 	}
 
@@ -142,7 +142,7 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 		return err
 	}
 
-	log.Printf("Change status: %+v", accrualsDTO)
+	log.Printf("Change order after processing: %+v", accrualsDTO)
 	rows.Close()
 
 	return tx.Commit()

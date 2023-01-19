@@ -39,7 +39,7 @@ func NewResponse(msg string) Response {
 func (h *Handler) PostOrder(c echo.Context) error {
 	userID, ok := c.Get("uuid").(string) //TODO асерт типа
         
-        log.Printf("UUID fron handler PostOrder: %s", userID)
+        log.Printf("UUID from handler PostOrder: %s", userID)
 	
 	if !ok {
 		err := errors.New("uuid value is not string")
@@ -122,6 +122,7 @@ func (h *Handler) PostOrder(c echo.Context) error {
 
 func (h *Handler) GetOrders(c echo.Context) error {
 	userID := c.Get("uuid").(string) // TODO context interface my own
+        log.Printf("UUID from handler PostOrder: %s", userID)
 
 	if userID == "" {
 		err := errors.New("uuid value in context is empty")

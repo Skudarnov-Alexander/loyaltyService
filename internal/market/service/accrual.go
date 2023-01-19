@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -25,9 +24,9 @@ func NewAccrualService(db market.AccrualRepository, pollInt time.Duration) *Accr
 }
 
 func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
-	URL := fmt.Sprintf("http://%s", accrualAddr)
+	//URL := fmt.Sprintf("http://%s", accrualAddr)
 	client := resty.New().
-		SetBaseURL(URL)
+		SetBaseURL(accrualAddr)
 	
 
 	var count int64

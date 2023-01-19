@@ -120,8 +120,8 @@ func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.O
 		return nil, err
 	}
 
-	log.Printf("OrdersDTO: %v", ordersDTO)
-	log.Printf("Orders: %v", orders)
+	log.Printf("OrdersDTO: %+v", ordersDTO)
+	log.Printf("Orders: %+v", orders)
 
 	return orders, tx.Commit()
 }
