@@ -78,7 +78,7 @@ func main() {
 	g.GET("/orders", marketHandler.GetOrders)
 	g.GET("/balance", marketHandler.GetBalance)
 	g.POST("/balance/withdraw", marketHandler.PostWithdrawal)
-	g.GET("/balance/withdrawals", marketHandler.GetWithdrawals)
+	g.GET("/withdrawals", marketHandler.GetWithdrawals)
 
 	e.Logger.Fatal(e.Start(":8080"))
 }

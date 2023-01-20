@@ -26,6 +26,7 @@ func ParseToken(accessToken string, singingKey []byte) (string, error) {
 		return "", errors.New("token is not valid")
 	}
 
+
 	claims, ok := token.Claims.(*service.Claims)
 	if !ok {
 		return "", errors.New("couldn't parse claims")

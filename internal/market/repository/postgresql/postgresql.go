@@ -2,7 +2,6 @@ package postgresql
 
 import (
 	"context"
-	//"database/sql"
 	"errors"
 	"log"
 
@@ -158,7 +157,7 @@ func (p *PostrgeSQL) SelectBalance(ctx context.Context, userID string) (model.Ba
 }
 
 func insertWithdrawal(ctx context.Context, db *sqlx.DB, userID string, w dto.WithdrawnDTO) error {
-	quary := `INSERT INTO purchases(order_id, sum, fk_user_id)
+	quary := `INSERT INTO purchases(order_number, sum, fk_user_id)
 	VALUES
 	($1, $2, $3);`
 
@@ -176,6 +175,7 @@ func insertWithdrawal(ctx context.Context, db *sqlx.DB, userID string, w dto.Wit
 
 	defer stmt.Close()
 
+	log.Printf("wDTO INSERT %+v", w)
 	if _, err := stmt.ExecContext(ctx, w.OrderID, w.Sum, userID); err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func (p *PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w mode
 }
 
 func (p *PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]model.Withdrawn, error) {
-	quary := `SELECT order_id, sum,  processed_at
+	quary := `SELECT order_number, sum, processed_at
 	FROM purchases
 	WHERE fk_user_id = $1
 	ORDER BY processed_at;`
