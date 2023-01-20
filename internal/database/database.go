@@ -61,7 +61,7 @@ func InitDB(db *sqlx.DB) error {
 	(
 		purchase_id SERIAL PRIMARY KEY,
 		order_number varchar(32) NOT NULL,
-		sum integer NOT NULL,
+		sum real NOT NULL,
 		processed_at TIMESTAMP DEFAULT Now(),
 		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
 		UNIQUE(order_number)
@@ -74,7 +74,7 @@ func InitDB(db *sqlx.DB) error {
 	INSERT INTO balances(fk_user_id)
 	VALUES
 	('db61d134-aa52-49d9-a006-4e82e4d237ca');
-	
+
 	INSERT INTO orders(order_number, status, fk_user_id)
 	VALUES
 	('1', 0, 'db61d134-aa52-49d9-a006-4e82e4d237ca'),
