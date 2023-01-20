@@ -80,20 +80,22 @@ func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
                                 accrualResp := resp.Result().(*AccrualResp)
                                 
                                 log.Printf("Получен статус заказа по HTTP: %+v", accrualResp)
-                                if accrualResp.Status == "REGISTERED" || accrualResp.Status == "PROCESSING" {
-                                        time.Sleep(3 * time.Second)
+                                if accrualResp.Status == "PROCESSED" || accrualResp.Status == "INVALID" {
+                                        accrual := model.Accrual{
+                                                Number:  accrualResp.Number,
+                                                Status:  accrualResp.Status,
+                                                Accrual: accrualResp.Accrual,
+                                                UserID:  a.UserID,
+                                        }
+        
+                                        out <- accrual
+                                        done = true
+                                }
+
+                                time.Sleep(3 * time.Second)
                                         continue
-                                }
 
-                                accrual := model.Accrual{
-                                	Number:  accrualResp.Number,
-                                	Status:  accrualResp.Status,
-                                	Accrual: accrualResp.Accrual,
-                                	UserID:  a.UserID,
-                                }
-
-                                out <- accrual
-                                done = true
+                                
                         } 
                         log.Printf("worker #%d stop working with accrual: %s", i, a.Number)
                 }
