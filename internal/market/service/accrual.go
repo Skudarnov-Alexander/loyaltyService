@@ -50,6 +50,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 	t := time.NewTicker(s.pollInt)
 	for {
 		<- t.C
+		log.Println("START Taking orders")
 		count++
 
 		accruals, err := s.db.TakeOrdersForProcess(ctx)
@@ -57,7 +58,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 			return err
 		}
 
-		//log.Printf("worker load orders: %v", accruals)
+		log.Printf("worker load orders: %v", accruals)
 
 		err = s.db.ChangeStatusOrdersForProcess(ctx, accruals...)
 		if err != nil {

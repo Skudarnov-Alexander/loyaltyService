@@ -21,7 +21,7 @@ func New() (*Config, error) {
 	c := &Config{}
 
 	addrFlag := flag.String("a", "127.0.0.1:8080", "host:port")
-	pollIntFlag := flag.Duration("p", 5 * time.Second, "poll interval")
+	pollIntFlag := flag.Duration("p", time.Second, "poll interval")
 	DBAddressFlag := flag.String("d", "postgres://postgres:postgres@localhost:5432/marketDB", "DataBase address")
 	accrualAddrFlag := flag.String("r", "http://127.0.0.1:8082", "host:port")
 

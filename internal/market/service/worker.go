@@ -67,7 +67,6 @@ func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
                         log.Printf("worker #%d read accrual: %+v", i, a)
                         var done bool
                         for !done {
-                                log.Print("START LOOP")
                                 URL := fmt.Sprintf("/api/orders/%s", a.Number)
                                 resp, err := client.R().
                                 SetResult(AccrualResp{}).

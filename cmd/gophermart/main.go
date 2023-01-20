@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"time"
 
 	authr "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest/middleware"
@@ -59,7 +58,7 @@ func main() {
 
 	marketHandler := marketr.New(marketService)
 
-	accrualService := markets.NewAccrualService(marketStorage, 5 * time.Second)
+	accrualService := markets.NewAccrualService(marketStorage, cfg.PollInt)
 	go func() {
 		err := accrualService.Run(ctx, cfg.AccrualAddr)
 		if err != nil {
