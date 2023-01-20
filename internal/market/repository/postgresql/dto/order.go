@@ -3,6 +3,7 @@ package dto
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
@@ -42,7 +43,7 @@ func OrderToModel(ordersDTO ...Order) ([]model.Order, error) {
 		case PROCESSED:
 			status = "PROCESSED"
 		default:
-			return nil, errors.New("invalid status from DB")
+                        return nil, fmt.Errorf("OrderTOModel invalid status from DB %+v", 0)
 		}
 
 		val, err := o.UploadedAt.Value()
