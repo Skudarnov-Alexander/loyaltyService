@@ -68,6 +68,7 @@ func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
                         var done bool
                         for !done {
                                 URL := fmt.Sprintf("/api/orders/%s", a.Number)
+                                fmt.Println(URL)
                                 resp, err := client.R().
                                 SetResult(AccrualResp{}).
                                 Get(URL)

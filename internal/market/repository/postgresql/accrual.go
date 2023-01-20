@@ -10,7 +10,7 @@ import (
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
-const limitWorkers int64 = 5
+const limitOrdersBatch int64 = 20
 
 func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual, error) {
 	quary := `SELECT order_number, fk_user_id
@@ -34,7 +34,7 @@ func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual,
 	defer stmt.Close()
 
 	var accrualsDTO []dto.Accrual
-	err = stmt.Select(&accrualsDTO, limitWorkers)
+	err = stmt.Select(&accrualsDTO, limitOrdersBatch)
 	if err != nil {
 		return nil, err
 	}

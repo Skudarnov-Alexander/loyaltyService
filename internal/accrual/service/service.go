@@ -35,7 +35,7 @@ func (s Service) FetchAccrualStatus(order string) model.Accrual {
                 status = "REGISTERED"
         case n < 15:
                 status = "INVALID"
-        case n < 50:
+        case n < 35:
                 status = "PROCESSING"
         case n < 100:
                 status = "PROCESSED"

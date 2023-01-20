@@ -11,6 +11,8 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+const limitWorkers int = 10
+
 type AccrualService struct {
 	db market.AccrualRepository
 	pollInt time.Duration
@@ -34,7 +36,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 	outAccrualCh:= make(chan model.Accrual, 100)
 	stop := make(chan bool)
 
-	fanOutChs := fanOut(inAccrualCh, stop, 3)
+	fanOutChs := fanOut(inAccrualCh, stop, limitWorkers)
 
 	for idx, fanOutCh := range fanOutChs {
 		newWorker(fanOutCh, outAccrualCh, idx, client)
