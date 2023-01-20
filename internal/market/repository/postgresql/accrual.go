@@ -149,7 +149,7 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 }
 
 func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.Accrual) error {
-	log.Printf("Зашел в изменение баланса %+v", a)
+        log.Printf("Зашел в изменение баланса %+v", a)
 	quary := `UPDATE balances
         SET
 	        current_balance = current_balance + $1
@@ -175,7 +175,7 @@ func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.A
 	}
 
 	if rows.Err() != nil {
-		fmt.Print("зашел в rows.Err")
+                fmt.Print("зашел в rows.Err")
 		return rows.Err()
 	}
 
