@@ -15,7 +15,7 @@ const limitOrdersBatch int64 = 20
 func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual, error) {
 	quary := `SELECT order_number, fk_user_id
 	FROM orders
-	WHERE status = 0 OR status = 2
+	WHERE status = 0
 	ORDER BY uploaded_at
 	LIMIT $1;`
 
@@ -149,7 +149,7 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 }
 
 func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.Accrual) error {
-        log.Printf("Зашел в изменение баланса %+v", a)
+	log.Printf("Зашел в изменение баланса %+v", a)
 	quary := `UPDATE balances
         SET
 	        current_balance = current_balance + $1
@@ -175,7 +175,7 @@ func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.A
 	}
 
 	if rows.Err() != nil {
-                fmt.Print("зашел в rows.Err")
+		fmt.Print("зашел в rows.Err")
 		return rows.Err()
 	}
 

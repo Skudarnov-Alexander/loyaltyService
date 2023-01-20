@@ -19,12 +19,12 @@ const (
 )
 
 type Order struct {
-	ID		   int64            `db:"order_id,omitempty"`
+	ID	   int64            `db:"order_id,omitempty"`
 	Number     string           `db:"order_number,omitempty"`
 	Status     int64            `db:"status,omitempty"`
 	Accrual    sql.NullFloat64  `db:"accrual,omitempty"`
 	UploadedAt pgtype.Timestamp `db:"uploaded_at,omitempty"`
-	UserID 	   uuid.UUID 		`db:"fk_user_id,omitempty"`
+	UserID 	   uuid.UUID        `db:"fk_user_id,omitempty"`
 }
 
 func OrderToModel(ordersDTO ...Order) ([]model.Order, error) {

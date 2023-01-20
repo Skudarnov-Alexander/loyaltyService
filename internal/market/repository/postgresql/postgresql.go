@@ -91,7 +91,7 @@ func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.O
 	quary := `SELECT order_number, status, accrual, uploaded_at
 	FROM orders
 	WHERE fk_user_id = $1
-	ORDER BY uploaded_at;`
+	ORDER BY uploaded_at DESC;`
 
 	tx, err := p.db.Beginx()
 	if err != nil {
