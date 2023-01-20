@@ -138,7 +138,11 @@ func (h *Handler) GetOrders(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-        ordersDTO := dto.OrderToDTO(orders...)
+        ordersDTO, err := dto.OrderToDTO(orders...)
+        if err != nil {
+                err := fmt.Errorf("parse time error %s", err.Error())
+                return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+        }
 
         c.Response().Header().Set("Content-Type", "application/json")
 	return c.JSON(http.StatusOK, ordersDTO)
