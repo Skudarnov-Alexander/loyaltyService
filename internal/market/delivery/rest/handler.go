@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest/dto"
@@ -71,6 +72,8 @@ func (h *Handler) PostOrder(c echo.Context) error {
         
 
 	orderID := string(data)
+        ts := time.Now()
+        log.Printf("Заказ #%s получен к загрузке в %v", orderID, ts)
         number, err := strconv.Atoi(orderID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
@@ -104,8 +107,8 @@ func (h *Handler) PostOrder(c echo.Context) error {
 		log.Printf("service error: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-
-        
+        t := time.Now()
+        log.Printf("Заказ #%s загружен в %v", orderID, t)
 	return c.JSON(http.StatusAccepted, NewResponse("new order is loaded"))
 }
 
@@ -145,6 +148,7 @@ func (h *Handler) GetOrders(c echo.Context) error {
         }
 
         c.Response().Header().Set("Content-Type", "application/json")
+        log.Printf("GET ORDERS HANDLER BODY %+v", ordersDTO)
 	return c.JSON(http.StatusOK, ordersDTO)
 
 }

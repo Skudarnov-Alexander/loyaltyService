@@ -9,17 +9,10 @@ import (
 type Order struct {
 	Number     string       `json:"number"`
 	Status     string       `json:"status"`
-	Accrual    float32      `json:"accrual,omitempty"`
+	Accrual    *float64     `json:"accrual,omitempty"`
 	UploadedAt time.Time    `json:"uploaded_at"`
 }
-/*
-type order struct {
-	Number     string    `json:"number"`
-	Status     string    `json:"status"`
-	Accrual    float32   `json:"accrual"`
-	UploadedAt time.Time `json:"uploaded_at"`
-}
-*/
+
 
 func OrderToDTO(orders ...model.Order) ([]Order, error) {
 	var ordersDTO []Order
@@ -32,14 +25,13 @@ func OrderToDTO(orders ...model.Order) ([]Order, error) {
 		orderDTO := Order{
 			Number:     o.Number,
 			Status:     o.Status,
-			Accrual:    float32(o.Accrual),
 			UploadedAt: timeStamp,
 		}
-                /*
+                
 		if o.Status == "PROCESSED" {
 			orderDTO.Accrual = &o.Accrual
 		}
-                */
+                
 
 		ordersDTO = append(ordersDTO, orderDTO)
 

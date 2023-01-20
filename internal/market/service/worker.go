@@ -18,7 +18,7 @@ func fanOut(inputCh chan model.Accrual, stop <-chan bool, limitWorkers int) []ch
     }
 
     go func() {
-		log.Print("fanOut go start")
+		//log.Print("fanOut go start")
 		select {
 		case <-stop:
 			for i, ch := range chs {
@@ -28,15 +28,15 @@ func fanOut(inputCh chan model.Accrual, stop <-chan bool, limitWorkers int) []ch
 			log.Print("каналы закрыты")
 			return
 		default:
-			log.Print("fanOut default")
+			//log.Print("fanOut default")
 			for i := 0; ; i++ {
-				log.Printf("Канал %d", i)
+				//log.Printf("Канал %d", i)
 				if i == len(chs) {
 					i = 0
 				}
 	
 				order, ok := <-inputCh // если закрыт канал
-				log.Printf("чтение с общего канала %+v", order)
+				//log.Printf("чтение с общего канала %+v", order)
 				if !ok {
 					log.Print("горутина уснула")
 					time.Sleep(30 * time.Second) //TODO как усыпить горутину?
@@ -44,9 +44,9 @@ func fanOut(inputCh chan model.Accrual, stop <-chan bool, limitWorkers int) []ch
 				}
 	
 				ch := chs[i]
-				log.Print("записываем и блокируемся")
+				//log.Print("записываем и блокируемся")
 				ch <- order
-				log.Printf("в канал #%d записали %v", i, order)
+				//log.Printf("в канал #%d записали %v", i, order)
 			}
 		} 
     }()

@@ -57,7 +57,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 			return err
 		}
 
-		log.Printf("worker load orders: %v", accruals)
+		//log.Printf("worker load orders: %v", accruals)
 
 		err = s.db.ChangeStatusOrdersForProcess(ctx, accruals...)
 		if err != nil {
@@ -66,7 +66,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 
 		for _, a := range accruals{
 			inAccrualCh <- a
-			log.Printf("Записали в обший канал %+v", a)
+			//log.Printf("Записали в обший канал %+v", a)
 		}
 
 		if count == 1000 { //TODO stop go
@@ -77,7 +77,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 	stop <- true
 
 	time.Sleep(5 * time.Second)
-	log.Print("AccrualService stopped")
+	//log.Print("AccrualService stopped")
 	return nil
 }
 
