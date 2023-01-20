@@ -84,15 +84,18 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 
 func readWorker(ctx context.Context, db market.AccrualRepository, in chan model.Accrual) error {
        for accrual := range in {
-              if err := db.UpdateStatusProcessedOrders(ctx, accrual); err != nil {
-                     log.Printf("readWorker error: %s", err)
-                     return err
-              }
+                if err := db.UpdateStatusProcessedOrders(ctx, accrual); err != nil {
+                         log.Printf("readWorker error: %s", err)
+                        return err
+                }
 
-			  if err := db.UpdateBalanceProcessedOrders(ctx, accrual); err != nil {
-				log.Printf("readWorker error: %s", err)
-				return err
-		 }
+			if accrual.Status == "PROCESSED" {
+                                if err := db.UpdateBalanceProcessedOrders(ctx, accrual); err != nil {
+                                        log.Printf("readWorker error: %s", err)
+                                        return err
+                                }
+
+			}
        }
 
        return nil

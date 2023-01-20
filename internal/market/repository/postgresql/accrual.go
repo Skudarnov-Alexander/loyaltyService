@@ -15,7 +15,7 @@ const limitWorkers int64 = 5
 func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual, error) {
 	quary := `SELECT order_number, fk_user_id
 	FROM orders
-	WHERE status = 0
+	WHERE status = 0 OR status = 2
 	ORDER BY uploaded_at
 	LIMIT $1;`
 
@@ -51,7 +51,7 @@ func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual,
 func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals ...model.Accrual) error {
 	quary := `UPDATE orders
 	SET
-			status = 2
+			status = 1
 	WHERE order_number = $1
 	RETURNING order_number, status;`
 
