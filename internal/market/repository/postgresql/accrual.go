@@ -3,16 +3,13 @@ package postgresql
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql/dto"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
-const limitOrdersBatch int64 = 20
-
-func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual, error) {
+func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context, limitOrders int) ([]model.Accrual, error) {
 	quary := `SELECT order_number, fk_user_id
 	FROM orders
 	WHERE status = 0
@@ -34,7 +31,7 @@ func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context) ([]model.Accrual,
 	defer stmt.Close()
 
 	var accrualsDTO []dto.Accrual
-	err = stmt.Select(&accrualsDTO, limitOrdersBatch)
+	err = stmt.Select(&accrualsDTO, limitOrders)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +146,6 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 }
 
 func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.Accrual) error {
-        log.Printf("Зашел в изменение баланса %+v", a)
 	quary := `UPDATE balances
         SET
 	        current_balance = current_balance + $1
@@ -175,7 +171,6 @@ func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.A
 	}
 
 	if rows.Err() != nil {
-                fmt.Print("зашел в rows.Err")
 		return rows.Err()
 	}
 

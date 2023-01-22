@@ -11,10 +11,13 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-const limitWorkers int = 10
+const (
+	limitWorkers    int = 10
+	limitPollOrders int = 5
+)
 
 type AccrualService struct {
-	db market.AccrualRepository
+	db      market.AccrualRepository
 	pollInt time.Duration
 }
 
@@ -26,14 +29,12 @@ func NewAccrualService(db market.AccrualRepository, pollInt time.Duration) *Accr
 }
 
 func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
-	//URL := fmt.Sprintf("http://%s", accrualAddr)
 	client := resty.New().
 		SetBaseURL(accrualAddr)
-	
 
 	var count int64
 	inAccrualCh := make(chan model.Accrual, 100)
-	outAccrualCh:= make(chan model.Accrual, 100)
+	outAccrualCh := make(chan model.Accrual, 100)
 	stop := make(chan bool)
 
 	fanOutChs := fanOut(inAccrualCh, stop, limitWorkers)
@@ -42,20 +43,20 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 		newWorker(fanOutCh, outAccrualCh, idx, client)
 	}
 
-       go func() {
-              if err := readWorker(ctx, s.db, outAccrualCh); err != nil {
-                     log.Print(err)
-                     return
-              }
-       }() 
-	
+	go func() {
+		if err := readWorker(ctx, s.db, outAccrualCh); err != nil {
+			log.Print(err)
+			return
+		}
+	}()
+
 	t := time.NewTicker(s.pollInt)
 	for {
-		<- t.C
+		<-t.C
 		log.Println("START Taking orders")
 		count++
 
-		accruals, err := s.db.TakeOrdersForProcess(ctx)
+		accruals, err := s.db.TakeOrdersForProcess(ctx, limitPollOrders)
 		if err != nil {
 			return err
 		}
@@ -67,7 +68,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 			return err
 		}
 
-		for _, a := range accruals{
+		for _, a := range accruals {
 			inAccrualCh <- a
 			//log.Printf("Записали в обший канал %+v", a)
 		}
@@ -85,24 +86,19 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 }
 
 func readWorker(ctx context.Context, db market.AccrualRepository, in chan model.Accrual) error {
-       for accrual := range in {
-                if err := db.UpdateStatusProcessedOrders(ctx, accrual); err != nil {
-                        log.Printf("readWorker error: %s", err)
-                        return err
-                }
+	for accrual := range in {
+		if err := db.UpdateStatusProcessedOrders(ctx, accrual); err != nil {
+			log.Printf("readWorker error: %s", err)
+			return err
+		}
 
-			if accrual.Status == "PROCESSED" {
-                                if err := db.UpdateBalanceProcessedOrders(ctx, accrual); err != nil {
-                                        log.Printf("readWorker error: %s", err)
-                                        return err
-                                }
-
+		if accrual.Status == "PROCESSED" {
+			if err := db.UpdateBalanceProcessedOrders(ctx, accrual); err != nil {
+				log.Printf("readWorker error: %s", err)
+				return err
 			}
-       }
+		}
+	}
 
-       return nil
+	return nil
 }
-
-
-
-

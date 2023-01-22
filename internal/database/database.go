@@ -23,7 +23,7 @@ func New(addr string) (*sqlx.DB, error) {
 	return db, nil
 }
 
-func InitDB(db *sqlx.DB) error {
+func CreateTables(db *sqlx.DB) error {
 	quary := 
 	`DROP TABLE IF EXISTS orders;
 	DROP TABLE IF EXISTS balances;
