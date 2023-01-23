@@ -16,8 +16,8 @@ type Repository interface {
 }
 
 type AccrualRepository interface {
-	TakeOrdersForProcess(ctx context.Context, limitOrders int) ([]model.Accrual, error)
-	ChangeStatusOrdersForProcess(ctx context.Context, accruals ...model.Accrual) error
-	UpdateStatusProcessedOrders(ctx context.Context, a model.Accrual) error
-	UpdateBalanceProcessedOrders(ctx context.Context, a model.Accrual) error
+	TakeOrdersForProcess(limitOrders int) ([]model.Accrual, error)
+	ChangeStatusOrdersForProcess(accruals ...model.Accrual) error
+	UpdateStatusProcessedOrders(a model.Accrual) error
+	UpdateBalanceProcessedOrders(a model.Accrual) error
 }

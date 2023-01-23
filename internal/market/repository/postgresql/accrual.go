@@ -1,7 +1,6 @@
 package postgresql
 
 import (
-	"context"
 	"errors"
 	"log"
 
@@ -9,7 +8,7 @@ import (
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
-func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context, limitOrders int) ([]model.Accrual, error) {
+func (p *PostrgeSQL) TakeOrdersForProcess(limitOrders int) ([]model.Accrual, error) {
 	quary := `SELECT order_number, fk_user_id
 	FROM orders
 	WHERE status = 0
@@ -23,7 +22,7 @@ func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context, limitOrders int) 
 
 	defer tx.Rollback()
 
-	stmt, err := tx.PreparexContext(ctx, quary)
+	stmt, err := tx.Preparex(quary)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +44,7 @@ func (p *PostrgeSQL) TakeOrdersForProcess(ctx context.Context, limitOrders int) 
 	return accruals, tx.Commit()
 }
 
-func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals ...model.Accrual) error {
+func (p *PostrgeSQL) ChangeStatusOrdersForProcess(accruals ...model.Accrual) error {
 	quary := `UPDATE orders
 	SET
 			status = 1
@@ -57,7 +56,7 @@ func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals 
 		return err
 	}
 
-	stmt, err := tx.PreparexContext(ctx, quary)
+	stmt, err := tx.Preparex(quary)
 	if err != nil {
 		return err
 	}
@@ -65,7 +64,7 @@ func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals 
 	defer stmt.Close()
 
 	for _, a := range accruals {
-		rows, err := stmt.QueryxContext(ctx, a.Number)
+		rows, err := stmt.Queryx(a.Number)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -90,7 +89,7 @@ func (p *PostrgeSQL) ChangeStatusOrdersForProcess(ctx context.Context, accruals 
 	return tx.Commit()
 }
 
-func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Accrual) error { //TODO батчи?
+func (p *PostrgeSQL) UpdateStatusProcessedOrders(a model.Accrual) error { //TODO батчи?
 	var status int64
 
 	switch a.Status {
@@ -114,14 +113,14 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 		return err
 	}
 
-	stmt, err := tx.PreparexContext(ctx, quary)
+	stmt, err := tx.Preparex(quary)
 	if err != nil {
 		return err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.QueryxContext(ctx, status, a.Accrual, a.Number)
+	rows, err := stmt.Queryx(status, a.Accrual, a.Number)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -145,7 +144,7 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(ctx context.Context, a model.Ac
 	return tx.Commit()
 }
 
-func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.Accrual) error {
+func (p *PostrgeSQL) UpdateBalanceProcessedOrders(a model.Accrual) error {
 	quary := `UPDATE balances
         SET
 	        current_balance = current_balance + $1
@@ -157,14 +156,14 @@ func (p *PostrgeSQL) UpdateBalanceProcessedOrders(ctx context.Context, a model.A
 		return err
 	}
 
-	stmt, err := tx.PreparexContext(ctx, quary)
+	stmt, err := tx.Preparex(quary)
 	if err != nil {
 		return err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.QueryxContext(ctx, a.Accrual, a.UserID)
+	rows, err := stmt.Queryx(a.Accrual, a.UserID)
 	if err != nil {
 		tx.Rollback()
 		return err

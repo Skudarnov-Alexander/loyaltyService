@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	limitWorkers    int = 5
-	limitPollOrders int = 10
+	limitWorkers    int = 3
+	limitPollOrders int = 3
 )
 
 type AccrualService struct {
@@ -41,13 +41,15 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 	for {
 		select {
 		case <-ctx.Done():
+                        log.Print("Accrual service is stopping...")
+                        time.Sleep(10 * time.Second)
                         return nil
 
 		case <-t.C:
-			accruals, err := s.db.TakeOrdersForProcess(ctx, limitPollOrders)
+			accruals, err := s.db.TakeOrdersForProcess(limitPollOrders)
 			if err != nil {
 				log.Print(err)
-				return err
+				s.errChan <- err
 			}
 
                         log.Printf("worker poll orders for processing: %v", accruals)
@@ -65,11 +67,11 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 				continue
 			}
 
-			if err := s.db.ChangeStatusOrdersForProcess(ctx, accruals...); err != nil {
+			if err := s.db.ChangeStatusOrdersForProcess(accruals...); err != nil {
 				log.Print(err)
-				return err
+				s.errChan <- err
 			}
-                        
+
                         // TODO надо ли вейт групп на эти горутины все?
 			inAccrualCh := pollOrders(accruals...)
 			fanOutChs := fanOut(inAccrualCh, limitWorkers)

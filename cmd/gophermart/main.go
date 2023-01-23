@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"os/signal"
+	"syscall"
+	"time"
 
 	authr "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
 	authdb "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/repository/postgresql"
@@ -18,7 +21,13 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), 
+                syscall.SIGINT, 
+                syscall.SIGTERM, 
+                syscall.SIGQUIT)
+
+	defer cancel()
+
 	errChan := make(chan error)
 
 	go func() {
@@ -29,7 +38,7 @@ func main() {
 
 	cfg, err := config.New()
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	db, err := database.New(cfg.DBAddr)
@@ -79,9 +88,17 @@ func main() {
 		return accrualService.Run(ctx, cfg.AccrualAddr)
 	})
 
+        go func() {
+                <-ctx.Done()
+                server.Stop(ctx)
+        }()
+
 	if err = g.Wait(); err != nil {
-		cancel()
-		log.Fatal(err)
+		log.Print(err)
 	}
 
+        log.Print("App is shutting down...")
+	time.Sleep(20 * time.Second) //Q какие ресурсы надо закрыть?
+        defer db.Close()
+	log.Print("Agent is shutted down")
 }

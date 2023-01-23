@@ -152,13 +152,13 @@ func pollOrders(accruals ...model.Accrual) chan model.Accrual {
 func writeResult(ctx context.Context, db market.AccrualRepository, in chan model.Accrual) {
 	go func() {
 		for accrual := range in {
-			if err := db.UpdateStatusProcessedOrders(ctx, accrual); err != nil {
+			if err := db.UpdateStatusProcessedOrders(accrual); err != nil {
 				log.Printf("readWorker error: %s", err)
 				//return err
 			}
 
 			if accrual.Status == "PROCESSED" {
-				if err := db.UpdateBalanceProcessedOrders(ctx, accrual); err != nil {
+				if err := db.UpdateBalanceProcessedOrders(accrual); err != nil {
 					log.Printf("readWorker error: %s", err)
 					//return err
 				}

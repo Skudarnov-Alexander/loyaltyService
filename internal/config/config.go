@@ -20,7 +20,7 @@ type Config struct {
 func New() (*Config, error) {
 	c := &Config{}
 
-	addrFlag := flag.String("a", "127.0.0.1:8080", "host:port")
+	addrFlag := flag.String("a", "127.0.0.1:8081", "host:port")
 	pollIntFlag := flag.Duration("p", 1 * time.Second, "poll interval")
 	DBAddressFlag := flag.String("d", "postgres://postgres:postgres@localhost:5432/marketDB", "DataBase address")
 	accrualAddrFlag := flag.String("r", "http://127.0.0.1:8082", "host:port")

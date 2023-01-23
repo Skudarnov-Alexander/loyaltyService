@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log"
 
 	arest "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
@@ -40,10 +41,15 @@ func New(authHandler *arest.Handler, marketHandler *mrest.Handler, addr string) 
 func (s Server) Run() error {
         log.Printf("HTTP Server is starting: %s", s.e.Server.Addr)
 	if err := s.e.Server.ListenAndServe(); err != nil {
-                log.Printf("HTTP Server is stopping: %s", s.e.Server.Addr)   
+                log.Printf("HTTP Server [%s] is stopping by err: %s", s.e.Server.Addr, err)   
                 return err
         }
 
         return nil
 
+}
+
+func (s Server) Stop(ctx context.Context) error {
+        log.Printf("HTTP Server is stopping: %s", s.e.Server.Addr)
+	return s.e.Server.Shutdown(ctx)
 }
