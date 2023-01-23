@@ -67,7 +67,7 @@ func main() {
 
 	server := server.New(aHandler, mHandler, cfg.Addr)
 
-	accrualService := markets.NewAccrualService(mStorage, cfg.PollInt)
+	accrualService := markets.NewAccrualService(mStorage, cfg.PollInt, errChan)
 
 	g, ctx := errgroup.WithContext(ctx)
 

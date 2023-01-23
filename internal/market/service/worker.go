@@ -13,7 +13,13 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func fanOut(inputCh chan model.Accrual, stop <-chan bool, limitWorkers int) []chan model.Accrual {
+type AccrualResp struct {
+	Number  string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float64 `json:"accrual"`
+}
+
+func fanOut(inputCh chan model.Accrual, limitWorkers int) []chan model.Accrual {
 	chs := make([]chan model.Accrual, 0, limitWorkers)
 	for i := 0; i < limitWorkers; i++ {
 		ch := make(chan model.Accrual)
@@ -21,80 +27,78 @@ func fanOut(inputCh chan model.Accrual, stop <-chan bool, limitWorkers int) []ch
 	}
 
 	go func() {
-		select {
-		case <-stop:
+		defer func(chs []chan model.Accrual) {
 			for i, ch := range chs {
 				close(ch)
 				log.Printf("закрыт in канал для воркера %d", i)
 			}
-			log.Print("каналы закрыты")
-			return
-		default:
-			//log.Print("fanOut default")
-			for i := 0; ; i++ {
-				//log.Printf("Канал %d", i)
-				if i == len(chs) {
-					i = 0
-				}
+			log.Print("Все каналы in закрыты")
+		}(chs)
 
-				order, ok := <-inputCh // если закрыт канал
-				//log.Printf("чтение с общего канала %+v", order)
-				if !ok {
-					log.Print("горутина уснула")
-					time.Sleep(30 * time.Second) //TODO как усыпить горутину?
-					log.Print("горутина проснулась")
-				}
+		for i := 0; ; i++ {
 
-				ch := chs[i]
-				//log.Print("записываем и блокируемся")
-				ch <- order
-				//log.Printf("в канал #%d записали %v", i, order)
+			order, ok := <-inputCh
+			if !ok {
+				log.Print("fanOut is stopped by сlosing a input chan")
+				return
 			}
+
+			//log.Printf("Канал %d", i)
+			if i == len(chs) {
+				i = 0
+			}
+
+			ch := chs[i]
+			//log.Print("записываем и блокируемся")
+			ch <- order
+			//log.Printf("в канал #%d записали %v", i, order)
+
 		}
+
 	}()
 
 	return chs
 }
 
-func fanIn(inputChs ...chan model.Accrual) chan model.Accrual {
-	outCh := make(chan model.Accrual)
+func fanIn(inChs ...chan model.Accrual) chan model.Accrual {
+	log.Print("fanIn is started")
+
+	out := make(chan model.Accrual)
 
 	go func() {
 		wg := &sync.WaitGroup{}
 
-		for _, inputCh := range inputChs {
+		for _, inCh := range inChs {
 			wg.Add(1)
 
-			go func(inputCh chan model.Accrual) {
+			go func(inCh chan model.Accrual) {
 				defer wg.Done()
-				for item := range inputCh { //закрыть канал для выхода из цикла
-					outCh <- item
+				for accrual := range inCh { //закрыть канал out воркера для выхода из цикла со стороны воркера
+					out <- accrual
 				}
-			}(inputCh)
+			}(inCh)
 		}
 
 		wg.Wait()
-		close(outCh) //закрыть общий out - убрать
+                close(out) //закрыть общий out - убрать
 	}()
 
-	return outCh
+	
+	log.Print("fanIn is stopped")
+
+	return out
 }
 
-type AccrualResp struct {
-	Number  string  `json:"order"`
-	Status  string  `json:"status"`
-	Accrual float64 `json:"accrual"`
-}
-
-func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
+func newWorker(in <-chan model.Accrual, out chan<- model.Accrual, i int, client *resty.Client) {
 	go func() {
 		for a := range in { //close chan
 			log.Printf("worker #%d read accrual: %+v", i, a)
 
+			URL := fmt.Sprintf("/api/orders/%s", a.Number)
+			fmt.Println(URL)
+
 			var isProcessed bool
 			for !isProcessed {
-				URL := fmt.Sprintf("/api/orders/%s", a.Number)
-				fmt.Println(URL)
 				resp, err := client.R().
 					SetResult(AccrualResp{}).
 					Get(URL)
@@ -121,50 +125,46 @@ func newWorker(in, out chan model.Accrual, i int, client *resty.Client) {
 
 				}
 
-				time.Sleep(3 * time.Second)
+				time.Sleep(3 * time.Second) //retry to request to accrual API
 				continue
 
 			}
-
-			log.Printf("worker #%d stop working with accrual: %s", i, a.Number)
-
 		}
+                log.Printf("worker #%d finished working with accrual", i)
+		close(out)
 	}()
 }
 
-func pollOrders(ctx context.Context, db market.AccrualRepository, out chan model.Accrual, pollInt time.Duration) error {
-	t := time.NewTicker(pollInt)
-	for {
-		select {
-		case <-ctx.Done():
-			log.Printf("pollOrders is aborted by ctx")
+func pollOrders(accruals ...model.Accrual) chan model.Accrual {
+	out := make(chan model.Accrual)
 
-			close(out)
-			return nil
+	go func(out chan model.Accrual) {
+		for _, a := range accruals {
+			out <- a
+		}
 
-		case <-t.C:
-			accruals, err := db.TakeOrdersForProcess(ctx, limitPollOrders)
-			if err != nil {
-                                log.Printf("")
-				return err
+		close(out)
+	}(out)
+
+	return out
+}
+
+func writeResult(ctx context.Context, db market.AccrualRepository, in chan model.Accrual) {
+	go func() {
+		for accrual := range in {
+			if err := db.UpdateStatusProcessedOrders(ctx, accrual); err != nil {
+				log.Printf("readWorker error: %s", err)
+				//return err
 			}
 
-                        if len(accruals) == 0 {
-                                log.Print("service doesn't have new orders for processing. Waiting...")
-                                time.Sleep(5 * time.Second)
-                                continue
-                        }
-
-			log.Printf("worker poll orders for processing: %v", accruals)
-
-			err = db.ChangeStatusOrdersForProcess(ctx, accruals...)
-			if err != nil {
-				return err
-			}
-
-			for _, a := range accruals {
-				out <- a
+			if accrual.Status == "PROCESSED" {
+				if err := db.UpdateBalanceProcessedOrders(ctx, accrual); err != nil {
+					log.Printf("readWorker error: %s", err)
+					//return err
+				}
 			}
 		}
-	}
+
+                log.Print("writeResult finished")
+	}()
 }
