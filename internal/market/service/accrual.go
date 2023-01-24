@@ -42,7 +42,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 		select {
 		case <-ctx.Done():
                         log.Print("Accrual service is stopping...")
-                        time.Sleep(10 * time.Second)
+                        time.Sleep(10 * time.Second) //TODO вейтгруппу сюда?
                         return nil
 
 		case <-t.C:
@@ -59,6 +59,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 				count++
 
 				if count == 5 {
+
 					log.Print("service doesn't have new orders for processing a lot of time. Waiting...")
                                         count = 0
 					time.Sleep(15 * time.Second) //waiting new orders in DB

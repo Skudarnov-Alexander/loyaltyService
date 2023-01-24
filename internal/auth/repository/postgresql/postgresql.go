@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/repository/postgresql/dto"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
 
@@ -21,13 +23,11 @@ type PostrgeSQL struct {
 	db *sqlx.DB
 }
 
-func New(db *sqlx.DB) (*PostrgeSQL, error) {
-	return &PostrgeSQL{
+func New(db *sqlx.DB) PostrgeSQL {
+	return PostrgeSQL{
 		db: db,
-	}, nil
+	}
 }
-
-// TODO close db conn
 
 func createBalance(ctx context.Context, db *sqlx.DB, userID string) error {
 	quary := `INSERT INTO balances(fk_user_id)
@@ -76,8 +76,6 @@ func createNewUser(ctx context.Context, db *sqlx.DB, u model.User) error {
 	defer stmt.Close()
 
 	_, err = stmt.ExecContext(ctx, u.ID, u.Username, u.Password)
-	log.Printf("%T", err)
-	log.Printf("err: %v\n", err)
 
 	var pgErr *pgconn.PgError
 
@@ -87,20 +85,12 @@ func createNewUser(ctx context.Context, db *sqlx.DB, u model.User) error {
 	}
 
 	if err != nil {
+                if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation {
+                        return auth.ErrUserIsExist
+                }
 		return err
 	}
-	/*
-			if err != nil {
-		                //pgerrcode.IsIntegrityConstraintViolation(err.Code)
-				if err, ok := err.(pgx.PgError); ok && err.Code == pgerrcode.UniqueViolation {
-		                        log.Print("pgerr")
-					return errors.New("user is exist")
-				}
-		                log.Print("not pgerr")
-
-				return err
-			  }
-	*/
+	
 	return tx.Commit()
 }
 
@@ -115,12 +105,6 @@ func (p PostrgeSQL) CreateUser(ctx context.Context, u model.User) error {
 
 	return nil
 
-}
-
-type User struct {
-	UserID   uuid.UUID `db:"user_id"`
-	Username string    `db:"username"`
-	Password string    `db:"password"`
 }
 
 func (p PostrgeSQL) GetUser(ctx context.Context, username string) (model.User, error) {
@@ -156,7 +140,7 @@ func (p PostrgeSQL) GetUser(ctx context.Context, username string) (model.User, e
 		return model.User{}, rows.Err()
 	}
 
-	var user User
+	var user dto.User
 
 	rows.Next()
 
@@ -166,7 +150,7 @@ func (p PostrgeSQL) GetUser(ctx context.Context, username string) (model.User, e
 		return model.User{}, err
 	}
 
-	u, err := toModel(user)
+	u, err := dto.UserToModel(user)
 	if err != nil {
 		log.Printf("toModel err: %s", err.Error())
 		return model.User{}, err
@@ -174,59 +158,3 @@ func (p PostrgeSQL) GetUser(ctx context.Context, username string) (model.User, e
 
 	return u, tx.Commit()
 }
-
-func toModel(u User) (model.User, error) {
-	uuid, err := u.UserID.Value()
-	if err != nil {
-		return model.User{}, err
-	}
-
-	return model.User{
-		ID:       uuid.(string),
-		Username: u.Username,
-		Password: u.Password,
-	}, nil
-}
-
-// не используется
-
-/*
-func checkUniqueUser(ctx context.Context, db *sqlx.DB, username string) (bool, error) {
-	var ok bool
-	quary := `SELECT EXISTS
-	(
-		SELECT username
-		FROM users
-		WHERE username = $1
-	);`
-
-	tx, err := db.Beginx()
-	if err != nil {
-		return ok, err
-	}
-
-	defer tx.Rollback()
-
-	stmt, err := tx.PreparexContext(ctx, quary)
-	if err != nil {
-		return ok, err
-	}
-
-	defer stmt.Close()
-
-	rows, err := stmt.QueryxContext(ctx, username)
-	if err != nil {
-		return ok, err
-	}
-
-	rows.Next()
-
-	err = rows.Scan(&ok)
-	if err != nil {
-		return ok, err
-	}
-	log.Printf("OK %v", ok)
-
-	return ok, tx.Commit()
-}
-*/

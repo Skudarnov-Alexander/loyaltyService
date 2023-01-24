@@ -8,7 +8,7 @@ import (
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
-func (p *PostrgeSQL) TakeOrdersForProcess(limitOrders int) ([]model.Accrual, error) {
+func (p PostrgeSQL) TakeOrdersForProcess(limitOrders int) ([]model.Accrual, error) {
 	quary := `SELECT order_number, fk_user_id
 	FROM orders
 	WHERE status = 0
@@ -44,7 +44,7 @@ func (p *PostrgeSQL) TakeOrdersForProcess(limitOrders int) ([]model.Accrual, err
 	return accruals, tx.Commit()
 }
 
-func (p *PostrgeSQL) ChangeStatusOrdersForProcess(accruals ...model.Accrual) error {
+func (p PostrgeSQL) ChangeStatusOrdersForProcess(accruals ...model.Accrual) error {
 	quary := `UPDATE orders
 	SET
 			status = 1
@@ -89,7 +89,7 @@ func (p *PostrgeSQL) ChangeStatusOrdersForProcess(accruals ...model.Accrual) err
 	return tx.Commit()
 }
 
-func (p *PostrgeSQL) UpdateStatusProcessedOrders(a model.Accrual) error { //TODO батчи?
+func (p PostrgeSQL) UpdateStatusProcessedOrders(a model.Accrual) error { //TODO батчи?
 	var status int64
 
 	switch a.Status {
@@ -144,7 +144,7 @@ func (p *PostrgeSQL) UpdateStatusProcessedOrders(a model.Accrual) error { //TODO
 	return tx.Commit()
 }
 
-func (p *PostrgeSQL) UpdateBalanceProcessedOrders(a model.Accrual) error {
+func (p PostrgeSQL) UpdateBalanceProcessedOrders(a model.Accrual) error {
 	quary := `UPDATE balances
         SET
 	        current_balance = current_balance + $1

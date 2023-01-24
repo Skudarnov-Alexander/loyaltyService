@@ -20,13 +20,13 @@ type PostrgeSQL struct {
 	db *sqlx.DB
 }
 
-func New(db *sqlx.DB) (*PostrgeSQL, error) {
-	return &PostrgeSQL{
+func New(db *sqlx.DB) PostrgeSQL {
+	return PostrgeSQL{
 		db: db,
-	}, nil
+	}
 }
 
-func (p *PostrgeSQL) CheckOrder(ctx context.Context, userID, orderID string) (bool, error) {
+func (p PostrgeSQL) CheckOrder(ctx context.Context, userID, orderID string) (bool, error) {
 	quary := `SELECT EXISTS 
         (
                 SELECT *
@@ -57,7 +57,7 @@ func (p *PostrgeSQL) CheckOrder(ctx context.Context, userID, orderID string) (bo
 
 }
 
-func (p *PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) error {
+func (p PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) error {
 	quary := `INSERT INTO orders(order_number, fk_user_id)
 	VALUES
 	($1, $2);`
@@ -87,7 +87,7 @@ func (p *PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) er
 	return tx.Commit()
 }
 
-func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.Order, error) {
+func (p PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.Order, error) {
 	quary := `SELECT order_number, status, accrual, uploaded_at
 	FROM orders
 	WHERE fk_user_id = $1
@@ -125,7 +125,7 @@ func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.O
 	return orders, tx.Commit()
 }
 
-func (p *PostrgeSQL) SelectBalance(ctx context.Context, userID string) (model.Balance, error) {
+func (p PostrgeSQL) SelectBalance(ctx context.Context, userID string) (model.Balance, error) {
 	quary := `SELECT current_balance, withdrawn
 	FROM balances
 	WHERE fk_user_id = $1;`
@@ -249,7 +249,7 @@ func updateBalance(ctx context.Context, db *sqlx.DB, userID string, b dto.Balanc
 	return bNew, tx.Commit()
 }
 
-func (p *PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w model.Withdrawn) (model.Balance, error) {
+func (p PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w model.Withdrawn) (model.Balance, error) {
 	wDTO := dto.WithdrawnToDTO(w)
 
 	bDTO, err := loadNewBalance(ctx, p.db, userID, wDTO)
@@ -271,7 +271,7 @@ func (p *PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w mode
 	return b, nil
 }
 
-func (p *PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]model.Withdrawn, error) {
+func (p PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]model.Withdrawn, error) {
 	quary := `SELECT order_number, sum, processed_at
 	FROM purchases
 	WHERE fk_user_id = $1

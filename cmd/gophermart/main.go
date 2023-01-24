@@ -12,6 +12,7 @@ import (
 	auths "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/config"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/database"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/logger"
 	marketr "github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest"
 	marketdb "github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql"
 	markets "github.com/Skudarnov-Alexander/loyaltyService/internal/market/service"
@@ -28,56 +29,56 @@ func main() {
 
 	defer cancel()
 
-	errChan := make(chan error)
+        // init logger
+        logger := logger.New()
 
+        // create error channel
+	errChan := make(chan error)
 	go func() {
 		for err := range errChan {
-			log.Print(err)
+			logger.L.Err(err).Msg("ErrChan")
 		}
 	}()
 
+        // parse config
 	cfg, err := config.New()
 	if err != nil {
-		log.Fatal(err)
+		logger.L.Fatal().Err(err).Msg("config parsing error")
 	}
-
+        logger.L.Info().Msgf("Config: %+v\n", cfg)
+       
+        // init DB connection and create tables/test data
 	db, err := database.New(cfg.DBAddr)
 	if err != nil {
-		log.Fatal(err)
+		logger.L.Fatal().Err(err).Msg("DB init error")
 	}
+        logger.L.Info().Msgf("DB is connected: %s\n", cfg.DBAddr)
 
 	if err := database.CreateTables(db); err != nil {
-		log.Fatal(err)
+		logger.L.Fatal().Err(err).Msg("DB tables creation error")
 	}
 
-	aStorage, err := authdb.New(db)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	aService, err := auths.New(aStorage)
+        // init auth service
+	aStorage := authdb.New(db)
+	aService, err := auths.New(aStorage) //TODO убрать соль
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	aHandler := authr.New(aService)
 
-	mStorage, err := marketdb.New(db)
-	if err != nil {
-		log.Fatal()
-	}
-
+        // init gophermarket service and accrual worker
+	mStorage := marketdb.New(db)
 	mService := markets.New(mStorage)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	mHandler := marketr.New(mService)
 
+        accrualService := markets.NewAccrualService(mStorage, cfg.PollInt, errChan)
+
+        // init HTTP server
 	server := server.New(aHandler, mHandler, cfg.Addr)
 
-	accrualService := markets.NewAccrualService(mStorage, cfg.PollInt, errChan)
-
+	
+        // start App
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -88,15 +89,17 @@ func main() {
 		return accrualService.Run(ctx, cfg.AccrualAddr)
 	})
 
+        // gracefull server shutdown
         go func() {
                 <-ctx.Done()
                 server.Stop(ctx)
         }()
-
+        
 	if err = g.Wait(); err != nil {
 		log.Print(err)
 	}
 
+        // App gracefull shutdown
         log.Print("App is shutting down...")
 	time.Sleep(20 * time.Second) //Q какие ресурсы надо закрыть?
         defer db.Close()

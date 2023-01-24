@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
@@ -13,8 +12,8 @@ import (
 type Config struct {
 	Addr   		string       	`env:"RUN_ADDRESS"`
 	PollInt   	time.Duration 	`env:"POLL_WORKER_INTERVAL"`
-	DBAddr 		string			`env:"DATABASE_URI"`
-	AccrualAddr string			`env:"ACCRUAL_SYSTEM_ADDRESS"`
+	DBAddr 		string		`env:"DATABASE_URI"`
+	AccrualAddr     string		`env:"ACCRUAL_SYSTEM_ADDRESS"`
 }
 
 func New() (*Config, error) {
@@ -27,9 +26,7 @@ func New() (*Config, error) {
 
 	flag.Parse()
 
-	err := env.Parse(c)
-	if err != nil {
-		fmt.Println("Ошибка парсинга env", err)
+	if err := env.Parse(c); err != nil {
 		return nil, err
 	}
 
@@ -49,16 +46,11 @@ func New() (*Config, error) {
 		c.AccrualAddr = *accrualAddrFlag
 	}
 
-
-	fmt.Printf("Config: %+v\n", c)
-
 	return c, nil
 }
 
 /*
 ### Конфигурирование сервиса накопительной системы лояльности
-
-Сервис должен поддерживать конфигурирование следующими методами:
 
 - адрес и порт запуска сервиса: переменная окружения ОС `RUN_ADDRESS` или флаг `a`;
 - адрес подключения к базе данных: переменная окружения ОС `DATABASE_URI` или флаг `d`;
