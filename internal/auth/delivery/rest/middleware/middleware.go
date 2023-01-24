@@ -2,25 +2,13 @@ package middleware
 
 import (
 	"errors"
+	"log"
 	"net/http"
-	"strings"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/parser"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
 	"github.com/labstack/echo/v4"
 )
-
-type keyID string
-
-func setKey (c echo.Context, key string) {
-	c.Set("uuid", key)
-}
-
-func getKey (c echo.Context) (keyID, bool) {
-	val, ok := c.Get("uuid").(keyID)
-	return val, ok
-	
-}
 
 func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -30,6 +18,9 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			err := errors.New("header Authorization is empty")
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
+
+		// Bearer auth
+		/*
 
 		headerParts := strings.Split(authHeader, " ")
 		if len(headerParts) != 2 {
@@ -42,13 +33,17 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
+		*/
 
-		uuid, err := parser.ParseToken(headerParts[1], service.SampleSecretKey)
+
+		uuid, err := parser.ParseToken(authHeader, service.SampleSecretKey)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 
-		setKey(c, uuid)
+		log.Printf("UUID in middleware: %s", uuid)
+
+		c.Set("uuid", uuid)
 
 		return next(c)
 		

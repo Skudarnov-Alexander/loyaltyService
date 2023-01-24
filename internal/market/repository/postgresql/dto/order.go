@@ -1,11 +1,14 @@
 package dto
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
-	"github.com/jackc/pgtype"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -15,14 +18,16 @@ const (
 	PROCESSED
 )
 
-type OrderDTO struct {
-	Number     string           `db:"order_id"`
-	Status     int64            `db:"status"`
-	Accrual    int64            `db:"accrual"`
-	UploadedAt pgtype.Timestamp `db:"uploaded_at"`
+type Order struct {
+	ID	   int64            `db:"order_id,omitempty"`
+	Number     string           `db:"order_number,omitempty"`
+	Status     int64            `db:"status,omitempty"`
+	Accrual    sql.NullFloat64  `db:"accrual,omitempty"`
+	UploadedAt pgtype.Timestamp `db:"uploaded_at,omitempty"`
+	UserID 	   uuid.UUID        `db:"fk_user_id,omitempty"`
 }
 
-func OrdersToModel(ordersDTO []OrderDTO) ([]model.Order, error) {
+func OrderToModel(ordersDTO ...Order) ([]model.Order, error) {
 	var orders []model.Order
 
 	for _, o := range ordersDTO {
@@ -38,7 +43,7 @@ func OrdersToModel(ordersDTO []OrderDTO) ([]model.Order, error) {
 		case PROCESSED:
 			status = "PROCESSED"
 		default:
-			return nil, errors.New("invalid status from DB")
+                        return nil, fmt.Errorf("OrderTOModel invalid status from DB %+v", 0)
 		}
 
 		val, err := o.UploadedAt.Value()
@@ -51,10 +56,10 @@ func OrdersToModel(ordersDTO []OrderDTO) ([]model.Order, error) {
 			return nil, errors.New("error type assertion timestamp")
 		}
 
-		order := model.Order{
+		order := model.Order{ //TODO pointer in model
 			Number:     o.Number,
 			Status:     status,
-			Accrual:    o.Accrual,
+			Accrual:    o.Accrual.Float64,
 			UploadedAt: timeStamp.Format(time.RFC3339),
 		}
 

@@ -9,7 +9,7 @@ import (
 )
 
 type WithdrawnDTO struct {
-	OrderID     string           `db:"order_id"`
+	OrderID     string           `db:"order_number"`
 	Sum         float64          `db:"sum"`
 	ProcessedAt pgtype.Timestamp `db:"processed_at,omitempty"`
 }
