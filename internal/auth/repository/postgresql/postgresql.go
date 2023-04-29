@@ -2,8 +2,6 @@ package postgresql
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth"
@@ -16,8 +14,6 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
-
-var DSN string = "postgres://postgres:postgres@localhost:5432/marketDB"
 
 type PostrgeSQL struct {
 	db *sqlx.DB
@@ -75,15 +71,7 @@ func createNewUser(ctx context.Context, db *sqlx.DB, u model.User) error {
 
 	defer stmt.Close()
 
-	_, err = stmt.ExecContext(ctx, u.ID, u.Username, u.Password)
-
-	var pgErr *pgconn.PgError
-
-	if errors.As(err, &pgErr) {
-		fmt.Println(pgErr.Message) // => syntax error at end of input
-		fmt.Println(pgErr.Code)    // => 42601
-	}
-
+	_, err = stmt.ExecContext(ctx, u.ID, u.Username, u.HashedPass)
 	if err != nil {
                 if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation {
                         return auth.ErrUserIsExist

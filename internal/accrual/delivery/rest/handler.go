@@ -10,7 +10,6 @@ import (
 type accrualService interface {
 	FetchAccrualStatus(order string) model.Accrual
 	RegisterOrder(order model.Order) error
-
 }
 
 type Handler struct {
@@ -25,12 +24,11 @@ func New(s accrualService) *Handler {
 
 func (h *Handler) GetAccrualStatus(c echo.Context) error {
 	c.Response().Header().Set("Content-Type", "application/json")
-	
+
 	number := c.Param("number")
 
 	a := h.service.FetchAccrualStatus(number)
 	return c.JSON(http.StatusOK, a)
-
 
 }
 
@@ -48,6 +46,3 @@ func (h *Handler) PostNewOrder(c echo.Context) error {
 
 	return c.NoContent(http.StatusOK)
 }
-
-
-

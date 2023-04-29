@@ -6,6 +6,8 @@ import (
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 )
 
+//go:generate mockgen -source=service.go -destination=service/mock/mock.go -package=mock
+
 type MarketService interface {
 	CheckOrder(ctx context.Context, userID, orderID string) (bool, error)
 	SaveOrder(ctx context.Context, userID, orderID string) error

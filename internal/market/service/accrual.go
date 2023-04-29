@@ -19,7 +19,7 @@ const (
 type AccrualService struct {
 	db      market.AccrualRepository
 	pollInt time.Duration
-        errChan chan<- error
+	errChan chan<- error
 }
 
 func NewAccrualService(db market.AccrualRepository, pollInt time.Duration, errChan chan<- error) *AccrualService {
@@ -35,15 +35,15 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 		SetBaseURL(accrualAddr)
 
 	t := time.NewTicker(s.pollInt)
-        var count int
+	var count int
 
-        defer log.Print("Accrual service is aborted by ctx") //TODO грейсфул
+	defer log.Print("Accrual service is aborted by ctx") //TODO грейсфул
 	for {
 		select {
 		case <-ctx.Done():
-                        log.Print("Accrual service is stopping...")
-                        time.Sleep(10 * time.Second) //TODO вейтгруппу сюда?
-                        return nil
+			log.Print("Accrual service is stopping...")
+			time.Sleep(10 * time.Second) //TODO вейтгруппу сюда?
+			return nil
 
 		case <-t.C:
 			accruals, err := s.db.TakeOrdersForProcess(limitPollOrders)
@@ -52,16 +52,15 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 				s.errChan <- err
 			}
 
-                        log.Printf("worker poll orders for processing: %v", accruals)
+			log.Printf("worker poll orders for processing: %v", accruals)
 
-			
 			if len(accruals) == 0 {
 				count++
 
 				if count == 5 {
 
 					log.Print("service doesn't have new orders for processing a lot of time. Waiting...")
-                                        count = 0
+					count = 0
 					time.Sleep(15 * time.Second) //waiting new orders in DB
 				}
 
@@ -73,7 +72,7 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 				s.errChan <- err
 			}
 
-                        // TODO надо ли вейт групп на эти горутины все?
+			// TODO надо ли вейт групп на эти горутины все?
 			inAccrualCh := pollOrders(accruals...)
 			fanOutChs := fanOut(inAccrualCh, limitWorkers)
 
@@ -89,5 +88,6 @@ func (s AccrualService) Run(ctx context.Context, accrualAddr string) error {
 			writeResult(ctx, s.db, outAccrualCh)
 
 		}
+
 	}
 }

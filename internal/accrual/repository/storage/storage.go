@@ -9,7 +9,7 @@ import (
 
 type Storage struct {
 	st map[string]model.Order
-} 
+}
 
 func New() Storage {
 	return Storage{
@@ -24,7 +24,7 @@ func (st Storage) StoreNewOrder(order model.Order) error {
 	}
 
 	status := "REGISTERED"
-	
+
 	order.Status = status
 
 	st.st[order.Order] = order
@@ -32,4 +32,3 @@ func (st Storage) StoreNewOrder(order model.Order) error {
 	log.Printf("заказ #%+v для обработки загружен", order)
 	return nil
 }
-

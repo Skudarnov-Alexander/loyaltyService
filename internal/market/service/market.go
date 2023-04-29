@@ -19,11 +19,8 @@ func New(db market.Repository) *MarketService {
 }
 
 func (s MarketService) SaveOrder(ctx context.Context, userID, orderID string) error {
-	if err := s.db.InsertOrder(ctx, userID, orderID); err != nil {
-		return err
-	}
-
-	return nil
+	return s.db.InsertOrder(ctx, userID, orderID)
+		
 }
 
 func (s MarketService) CheckOrder(ctx context.Context, userID, orderID string) (bool, error) {

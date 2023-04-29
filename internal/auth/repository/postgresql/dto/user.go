@@ -20,6 +20,6 @@ func UserToModel(u User) (model.User, error) {
 	return model.User{
 		ID:       uuid.(string),
 		Username: u.Username,
-		Password: u.Password,
+		//Password: u.Password,
 	}, nil
 }

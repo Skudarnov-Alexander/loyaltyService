@@ -22,19 +22,18 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 		// Bearer auth
 		/*
 
-		headerParts := strings.Split(authHeader, " ")
-		if len(headerParts) != 2 {
-			err := errors.New("header Authorization is incorrect")
-			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
-		}
+			headerParts := strings.Split(authHeader, " ")
+			if len(headerParts) != 2 {
+				err := errors.New("header Authorization is incorrect")
+				return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+			}
 
-		if headerParts[0] != "Bearer" {
-			err := errors.New("header Authorization is not Bearer")
-			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
-		}
+			if headerParts[0] != "Bearer" {
+				err := errors.New("header Authorization is not Bearer")
+				return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+			}
 
 		*/
-
 
 		uuid, err := parser.ParseToken(authHeader, service.SampleSecretKey)
 		if err != nil {
@@ -46,8 +45,6 @@ func Auth(next echo.HandlerFunc) echo.HandlerFunc {
 		c.Set("uuid", uuid)
 
 		return next(c)
-		
+
 	}
 }
-
-

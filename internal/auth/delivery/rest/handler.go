@@ -10,14 +10,14 @@ import (
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
 
-	"github.com/labstack/echo/v4"
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
 )
 
 type response struct {
-	Status int	`json:"status"`
-	Msg	string	`json:"msg,omitempty"`
-	Token string `json:"token,omitempty"`
+	Status int    `json:"status"`
+	Msg    string `json:"msg,omitempty"`
+	Token  string `json:"token,omitempty"`
 }
 
 func newResponse(status int, msg, token string) *response {
@@ -40,40 +40,40 @@ func New(s auth.UserService) *Handler {
 
 func (h *Handler) RegisterUser(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-	c.Response().Header().Set("Content-Type", "application/json")
-	var user model.User
-	
-	if err := c.Bind(&user); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-	
-	validate := validator.New()
-	if err := validate.Struct(user); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-	
-	err := h.service.SignUp(c.Request().Context(), user)
-	if errors.Is(err, auth.ErrUserIsExist) {
-		return echo.NewHTTPError(http.StatusConflict, err.Error())
-	} 
-	
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
+		c.Response().Header().Set("Content-Type", "application/json")
+		var user model.User
 
-	data, err := json.Marshal(user)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-	
-	b := bytes.NewBuffer(data)
+		if err := c.Bind(&user); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
 
-	body := io.NopCloser(b)
+		validate := validator.New()
+		if err := validate.Struct(user); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
 
-	c.Request().Body = body
+		err := h.service.SignUp(c.Request().Context(), user)
+		if errors.Is(err, auth.ErrUserIsExist) {
+			return echo.NewHTTPError(http.StatusConflict, err.Error())
+		}
 
-	return next(c)
-	
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+
+		data, err := json.Marshal(user)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+
+		b := bytes.NewBuffer(data)
+
+		body := io.NopCloser(b)
+
+		c.Request().Body = body
+
+		return next(c)
+
 	}
 }
 
@@ -85,7 +85,6 @@ func (h *Handler) RegisterUser(next echo.HandlerFunc) echo.HandlerFunc {
 - `409` — логин уже занят;
 - `500` — внутренняя ошибка сервера.
 */
-
 
 func (h *Handler) LoginUser(c echo.Context) error {
 	c.Response().Header().Set("Content-Type", "application/json")
@@ -99,17 +98,13 @@ func (h *Handler) LoginUser(c echo.Context) error {
 	token, err := h.service.SignIn(c.Request().Context(), user)
 	if errors.Is(err, auth.ErrUserNotFound) {
 		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
-	} 
-	
+	}
+
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	c.Response().Header().Add("Authorization", token)
-	
+
 	return c.JSON(http.StatusOK, newResponse(http.StatusOK, "auth is successfull", token))
 }
-
-
-
-

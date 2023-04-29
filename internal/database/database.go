@@ -7,7 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-
 func New(addr string) (*sqlx.DB, error) {
 	db, err := sqlx.Open("pgx", addr)
 	if err != nil {
@@ -24,15 +23,16 @@ func New(addr string) (*sqlx.DB, error) {
 }
 
 func CreateTables(db *sqlx.DB) error {
-	quary := 
-	`DROP TABLE IF EXISTS orders;
+	quary :=
+		`DROP TABLE IF EXISTS orders;
 	DROP TABLE IF EXISTS balances;
 	DROP TABLE IF EXISTS purchases;
 	DROP TABLE IF EXISTS users;
 	
+	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 	CREATE TABLE users
 	(
-		user_id uuid PRIMARY KEY,
+		id uuid DEFAULT uuid_generate_v4 () PRIMARY KEY,
 		username varchar(16) NOT NULL,
 		password text NOT NULL,
 		UNIQUE(username)
@@ -40,20 +40,21 @@ func CreateTables(db *sqlx.DB) error {
 	
 	CREATE TABLE orders
 	(	
-		order_id SERIAL,
-		order_number varchar(32) PRIMARY KEY,
+		id SERIAL PRIMARY KEY,
+		order_number varchar(32),
 		status smallint DEFAULT 0,
 		accrual real DEFAULT NULL,
 		uploaded_at TIMESTAMP DEFAULT Now(),
-		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
-		UNIQUE(order_id)
+		fk_user_id uuid REFERENCES users(id) NOT NULL,
+		UNIQUE(order_number)
 	);
 	
 	CREATE TABLE balances
-	(
-		current_balance real DEFAULT 0 NOT NULL,
+	(	
+		id SERIAL PRIMARY KEY,
+		current_balance real DEFAULT 500 NOT NULL,
 		withdrawn real DEFAULT 0 NOT NULL,
-		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
+		fk_user_id uuid REFERENCES users(id) NOT NULL,
 		UNIQUE(fk_user_id)
 	);
 	
@@ -63,7 +64,7 @@ func CreateTables(db *sqlx.DB) error {
 		order_number varchar(32) NOT NULL,
 		sum real NOT NULL,
 		processed_at TIMESTAMP DEFAULT Now(),
-		fk_user_id uuid REFERENCES users(user_id) NOT NULL,
+		fk_user_id uuid REFERENCES users(id) NOT NULL,
 		UNIQUE(order_number)
 	);
 	

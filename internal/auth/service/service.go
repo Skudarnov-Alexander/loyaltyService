@@ -1,5 +1,6 @@
 package service
 
+/*
 import (
 	"context"
 	"errors"
@@ -20,7 +21,7 @@ func New(userRepo auth.AuthRepository) (*AuthService, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &AuthService{
 		userRepo: userRepo,
 		hashSalt: hashSalt,
@@ -33,7 +34,7 @@ func (s *AuthService) SignUp(ctx context.Context, u model.User) error {
 	if err != nil {
 		return err
 	}
-	
+
 	u.ID = uuid.String()
 
 	return s.userRepo.CreateUser(ctx, u)
@@ -44,7 +45,7 @@ func (s *AuthService) SignIn(ctx context.Context, u model.User) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	
+
 	if ok := doPasswordsMatch(user.Password, u.Password, s.hashSalt); !ok {
 		return "", errors.New("pass is not match")
 	}
@@ -52,6 +53,4 @@ func (s *AuthService) SignIn(ctx context.Context, u model.User) (string, error) 
 	return generateJWT(user)
 
 }
-
-
-
+*/

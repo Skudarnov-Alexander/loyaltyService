@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
@@ -27,6 +28,7 @@ func New(db *sqlx.DB) PostrgeSQL {
 }
 
 func (p PostrgeSQL) CheckOrder(ctx context.Context, userID, orderID string) (bool, error) {
+        fmt.Println("START check order")
 	quary := `SELECT EXISTS 
         (
                 SELECT *
@@ -58,6 +60,7 @@ func (p PostrgeSQL) CheckOrder(ctx context.Context, userID, orderID string) (boo
 }
 
 func (p PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) error {
+        fmt.Println("START Insert order")
 	quary := `INSERT INTO orders(order_number, fk_user_id)
 	VALUES
 	($1, $2);`
@@ -78,11 +81,14 @@ func (p PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) err
 
 	if _, err := stmt.ExecContext(ctx, orderID, userID); err != nil {
 		if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation {
+			fmt.Println("OK")
 			return market.ErrOrderIsExist
 		}
-
+		fmt.Println("not OK")
 		return err
 	}
+
+        fmt.Println("not not OK")
 
 	return tx.Commit()
 }

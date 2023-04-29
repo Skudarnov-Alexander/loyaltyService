@@ -9,14 +9,14 @@ import (
 )
 
 type accrualRepository interface {
-        StoreNewOrder(order model.Order) error
+	StoreNewOrder(order model.Order) error
 }
 
 type Service struct {
 	db accrualRepository
 }
 
-func New(db accrualRepository) *Service{
+func New(db accrualRepository) *Service {
 	return &Service{
 		db: db,
 	}
@@ -24,41 +24,41 @@ func New(db accrualRepository) *Service{
 
 func (s Service) FetchAccrualStatus(order string) model.Accrual {
 	src := rand.NewSource(time.Now().UnixNano())
-        r := rand.New(src)
-        n := r.Intn(100)
+	r := rand.New(src)
+	n := r.Intn(100)
 
-        var status string
-        var accrual float64
+	var status string
+	var accrual float64
 
-        switch {
-        case n < 10:
-                status = "REGISTERED"
-        case n < 50:
-                status = "INVALID"
-        case n < 70:
-                status = "PROCESSING"
-        case n < 100:
-                status = "PROCESSED"
-                accrual = float64(r.Intn(5000))
-        }
+	switch {
+	case n < 10:
+		status = "REGISTERED"
+	case n < 50:
+		status = "INVALID"
+	case n < 70:
+		status = "PROCESSING"
+	case n < 100:
+		status = "PROCESSED"
+		accrual = float64(r.Intn(5000))
+	}
 
-        a := model.Accrual{
-        	Order:   order,
-        	Status:  status,
-        	Accrual: accrual,
-        }
+	a := model.Accrual{
+		Order:   order,
+		Status:  status,
+		Accrual: accrual,
+	}
 
-        log.Print(a)
+	log.Print(a)
 
-        return a
+	return a
 }
 
 func (s Service) RegisterOrder(order model.Order) error {
-        if err := s.db.StoreNewOrder(order); err != nil {
-                return err
-        }
+	if err := s.db.StoreNewOrder(order); err != nil {
+		return err
+	}
 
-        return nil
+	return nil
 }
 
 /*

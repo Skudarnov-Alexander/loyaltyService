@@ -7,16 +7,18 @@ import (
 	"syscall"
 	"time"
 
-	authr "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
-	authdb "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/repository/postgresql"
-	auths "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/config"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/database"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/delivery/rest"
+	http2 "github.com/Skudarnov-Alexander/loyaltyService/internal/infrastructure/http"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/infrastructure/repository/postgresql"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/logger"
 	marketr "github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest"
 	marketdb "github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql"
 	markets "github.com/Skudarnov-Alexander/loyaltyService/internal/market/service"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/pkg/hash"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/server"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/usecase/interactor"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -59,6 +61,7 @@ func main() {
 	}
 
         // init auth service
+	/*
 	aStorage := authdb.New(db)
 	aService, err := auths.New(aStorage) //TODO убрать соль
 	if err != nil {
@@ -66,6 +69,7 @@ func main() {
 	}
 
 	aHandler := authr.New(aService)
+	*/
 
         // init gophermarket service and accrual worker
 	mStorage := marketdb.New(db)
@@ -75,7 +79,7 @@ func main() {
         accrualService := markets.NewAccrualService(mStorage, cfg.PollInt, errChan)
 
         // init HTTP server
-	server := server.New(aHandler, mHandler, cfg.Addr)
+	server := server.New(nil, mHandler, cfg.Addr)
 
 	
         // start App
@@ -89,6 +93,21 @@ func main() {
 		return accrualService.Run(ctx, cfg.AccrualAddr)
 	})
 
+	salt, err := hash.GenerateRandomSalt()
+	if err != nil {
+		logger.L.Fatal().Err(err).Msg("salt generating error")
+	}
+	hasher := hash.New(salt)
+
+	userRepository := postgresql.NewUserRepository(db)
+	balanceRepository := postgresql.NewBalanceRepository(db)
+
+	authInteractor := interactor.NewAuthInteractor(userRepository, balanceRepository, hasher)
+	authHTTPConroller := rest.NewAuthHTTPController(authInteractor)
+
+	echoServer := http2.NewEchoHTTPServer(authHTTPConroller, nil)
+	echoServer.Run(8086)
+
         // gracefull server shutdown
         go func() {
                 <-ctx.Done()
@@ -101,7 +120,7 @@ func main() {
 
         // App gracefull shutdown
         log.Print("App is shutting down...")
-	time.Sleep(20 * time.Second) //Q какие ресурсы надо закрыть?
+	time.Sleep(10 * time.Second) //Q какие ресурсы надо закрыть?
         defer db.Close()
 	log.Print("Agent is shutted down")
 }

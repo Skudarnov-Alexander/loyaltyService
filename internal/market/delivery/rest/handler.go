@@ -7,9 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest/dto"
@@ -29,37 +27,48 @@ func New(s market.MarketService) *Handler {
 }
 
 type Response struct {
-        Message string `json:"message"`
+	Message string `json:"message"`
 }
 
 func NewResponse(msg string) Response {
-        return Response{
-        	Message: msg,
-        }
+	return Response{
+		Message: msg,
+	}
+}
+
+type ErrorResponse struct {
+	Err string `json:"message"`
+}
+
+func NewErrorResponse(msg string) ErrorResponse {
+	return ErrorResponse{
+		Err: msg,
+	}
 }
 
 func (h *Handler) PostOrder(c echo.Context) error {
+	c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
 	userID, ok := c.Get("uuid").(string) //TODO асерт типа
-        
-        log.Printf("UUID from handler PostOrder: %s", userID)
-	
+
+	log.Printf("UUID from handler PostOrder: %s", userID)
+
 	if !ok {
 		err := errors.New("uuid value is not string")
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	
 
 	if userID == "" {
-                log.Print("uuid value in context is empty")
+		log.Print("uuid value in context is empty")
 		err := errors.New("uuid value in context is empty")
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error()) //TODO error/log handler
 	}
 
-        ct := c.Request().Header.Get("Content-Type")
-        if !strings.Contains(ct, "text/plain") {
-                err := errors.New("header Content-Type is not text/plain")
-                return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-        }
+	ct := c.Request().Header.Get("Content-Type")
+	if !strings.Contains(ct, "text/plain") {
+		err := errors.New("header Content-Type is not text/plain")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 
 	data, err := io.ReadAll(c.Request().Body)
 	if err != nil {
@@ -67,50 +76,49 @@ func (h *Handler) PostOrder(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-        
-        // TODO как првоерить пустое body?
-        
+	// TODO как првоерить пустое body?
 
+	// validate order by Luhn
 	orderID := string(data)
-        ts := time.Now()
-        log.Printf("Заказ #%s получен к загрузке в %v", orderID, ts)
-        number, err := strconv.Atoi(orderID)
+
+	ok, err = luhn.CheckOrder(orderID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
 	}
 
-        l := len(orderID)
-	n := luhn.Checksum(number, l)
-        fmt.Println(n)
-	if n != 0 {
-		//log.Printf("orderID is incorrect. Add %d to last num", div)
-                return echo.NewHTTPError(http.StatusUnprocessableEntity, market.ErrFormatOrderID)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, market.ErrFormatOrderID)
 	}
 
 	ctx := c.Request().Context()
 
-        ok, err = h.service.CheckOrder(ctx, userID, orderID)
-        if err != nil {
-                log.Printf("service error: %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-        }
-
-        if ok {
-                return c.JSON(http.StatusOK, NewResponse("order is loaded yet"))
-        }
-
-	if err := h.service.SaveOrder(ctx, userID, orderID); err != nil {
-                if errors.Is (err, market.ErrOrderIsExist) {
-                        log.Printf("%v", err)
-                        return echo.NewHTTPError(http.StatusConflict, err.Error())   
-                }
+	ok, err = h.service.CheckOrder(ctx, userID, orderID)
+	if err != nil {
 		log.Printf("service error: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-        t := time.Now()
-        log.Printf("Заказ #%s загружен в %v", orderID, t)
+
+	if ok {
+		return c.JSON(http.StatusOK, NewResponse("order is loaded yet"))
+	}
+
+	if err := h.service.SaveOrder(ctx, userID, orderID); err != nil {
+		if errors.Is(err, market.ErrOrderIsExist) {
+			log.Print("Зашел в ошибку")
+			log.Printf("%v", err)
+
+			return echo.NewHTTPError(http.StatusConflict, market.ErrOrderIsExist)
+		}
+		log.Printf("service error: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	log.Print("Зашел в 200")
 	return c.JSON(http.StatusAccepted, NewResponse("new order is loaded"))
+
 }
+
+
+
 
 /*
 Возможные коды ответа:
@@ -126,29 +134,29 @@ func (h *Handler) PostOrder(c echo.Context) error {
 
 func (h *Handler) GetOrders(c echo.Context) error {
 	userID := c.Get("uuid").(string) // TODO context interface my own
-        log.Printf("UUID from handler GetOrders: %s", userID)
+	log.Printf("UUID from handler GetOrders: %s", userID)
 
 	if userID == "" {
 		err := errors.New("uuid value in context is empty")
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-        
-        ctx := context.WithValue(c.Request().Context(), "uuid", c.Get("uuid"))  
-        
+
+	ctx := context.WithValue(c.Request().Context(), "uuid", c.Get("uuid"))
+
 	orders, err := h.service.FetchOrders(ctx, userID)
 	if err != nil {
 		err := fmt.Errorf("service error %s", err.Error())
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-        ordersDTO, err := dto.OrderToDTO(orders...)
-        if err != nil {
-                err := fmt.Errorf("parse time error %s", err.Error())
-                return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-        }
+	ordersDTO, err := dto.OrderToDTO(orders...)
+	if err != nil {
+		err := fmt.Errorf("parse time error %s", err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
 
-        c.Response().Header().Set("Content-Type", "application/json")
-        log.Printf("GET ORDERS HANDLER BODY %+v", ordersDTO)
+	c.Response().Header().Set("Content-Type", "application/json")
+	log.Printf("GET ORDERS HANDLER BODY %+v", ordersDTO)
 	return c.JSON(http.StatusOK, ordersDTO)
 
 }
@@ -191,7 +199,7 @@ func (h *Handler) GetWithdrawals(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-        withdrawnsDTO := dto.WithdrawnToDTO(withdrawns...)
+	withdrawnsDTO := dto.WithdrawnToDTO(withdrawns...)
 
 	return c.JSON(http.StatusOK, withdrawnsDTO)
 
@@ -213,7 +221,7 @@ func (h *Handler) PostWithdrawal(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-        w := dto.WithdrawnToModel(wDTO)
+	w := dto.WithdrawnToModel(wDTO)
 
 	b, err := h.service.MakeWithdrawal(ctx, userID.(string), w)
 	if err != nil {
