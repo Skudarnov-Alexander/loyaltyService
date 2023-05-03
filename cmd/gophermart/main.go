@@ -1,67 +1,126 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os/signal"
+	"syscall"
+	"time"
 
-	authr "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
-	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest/middleware"
-	authdb "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/repository/postgresql"
-	auths "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/service"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/config"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/database"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/delivery/rest"
+	http2 "github.com/Skudarnov-Alexander/loyaltyService/internal/infrastructure/http"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/infrastructure/repository/postgresql"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/logger"
 	marketr "github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest"
 	marketdb "github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql"
 	markets "github.com/Skudarnov-Alexander/loyaltyService/internal/market/service"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/pkg/hash"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/server"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/usecase/interactor"
 
-	"github.com/labstack/echo/v4"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	db, err := database.New()
+	ctx, cancel := signal.NotifyContext(context.Background(), 
+                syscall.SIGINT, 
+                syscall.SIGTERM, 
+                syscall.SIGQUIT)
+
+	defer cancel()
+
+        // init logger
+        logger := logger.New()
+
+        // create error channel
+	errChan := make(chan error)
+	go func() {
+		for err := range errChan {
+			logger.L.Err(err).Msg("ErrChan")
+		}
+	}()
+
+        // parse config
+	cfg, err := config.New()
+	if err != nil {
+		logger.L.Fatal().Err(err).Msg("config parsing error")
+	}
+        logger.L.Info().Msgf("Config: %+v\n", cfg)
+       
+        // init DB connection and create tables/test data
+	db, err := database.New(cfg.DBAddr)
+	if err != nil {
+		logger.L.Fatal().Err(err).Msg("DB init error")
+	}
+        logger.L.Info().Msgf("DB is connected: %s\n", cfg.DBAddr)
+
+	if err := database.CreateTables(db); err != nil {
+		logger.L.Fatal().Err(err).Msg("DB tables creation error")
+	}
+
+        // init auth service
+	/*
+	aStorage := authdb.New(db)
+	aService, err := auths.New(aStorage) //TODO убрать соль
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := database.InitDB(db); err != nil {
-		log.Fatal(err)
-	}
+	aHandler := authr.New(aService)
+	*/
 
-	authStorage, err := authdb.New(db)
+        // init gophermarket service and accrual worker
+	mStorage := marketdb.New(db)
+	mService := markets.New(mStorage)
+	mHandler := marketr.New(mService)
+
+        accrualService := markets.NewAccrualService(mStorage, cfg.PollInt, errChan)
+
+        // init HTTP server
+	server := server.New(nil, mHandler, cfg.Addr)
+
+	
+        // start App
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return server.Run()
+	})
+
+	g.Go(func() error {
+		return accrualService.Run(ctx, cfg.AccrualAddr)
+	})
+
+	salt, err := hash.GenerateRandomSalt()
 	if err != nil {
-		log.Fatal()
+		logger.L.Fatal().Err(err).Msg("salt generating error")
+	}
+	hasher := hash.New(salt)
+
+	userRepository := postgresql.NewUserRepository(db)
+	balanceRepository := postgresql.NewBalanceRepository(db)
+
+	authInteractor := interactor.NewAuthInteractor(userRepository, balanceRepository, hasher)
+	authHTTPConroller := rest.NewAuthHTTPController(authInteractor)
+
+	echoServer := http2.NewEchoHTTPServer(authHTTPConroller, nil)
+	echoServer.Run(8086)
+
+        // gracefull server shutdown
+        go func() {
+                <-ctx.Done()
+                server.Stop(ctx)
+        }()
+        
+	if err = g.Wait(); err != nil {
+		log.Print(err)
 	}
 
-	authService, err := auths.New(authStorage)
-	if err != nil {
-		return
-	}
-
-	authHandler := authr.New(authService)
-
-	marketStorage, err := marketdb.New(db)
-	if err != nil {
-		log.Fatal()
-	}
-
-	marketService := markets.New(marketStorage)
-	if err != nil {
-		return
-	}
-
-	marketHandler := marketr.New(marketService)
-
-	e := echo.New()
-
-	e.POST("/api/user/register", authHandler.RegisterUser(authHandler.LoginUser))
-	e.POST("/api/user/login", authHandler.LoginUser)
-
-	g := e.Group("/api/user")
-	g.Use(middleware.Auth)
-
-	g.POST("/orders", marketHandler.PostOrder)
-	g.GET("/orders", marketHandler.GetOrders)
-	g.GET("/balance", marketHandler.GetBalance)
-	g.POST("/balance/withdraw", marketHandler.PostWithdrawal)
-	g.GET("/balance/withdrawals", marketHandler.GetWithdrawals)
-
-	e.Logger.Fatal(e.Start(":8080"))
+        // App gracefull shutdown
+        log.Print("App is shutting down...")
+	time.Sleep(10 * time.Second) //Q какие ресурсы надо закрыть?
+        defer db.Close()
+	log.Print("Agent is shutted down")
 }

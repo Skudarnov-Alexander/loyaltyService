@@ -3,41 +3,76 @@ package postgresql
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/market"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/market/repository/postgresql/dto"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
-)
 
-var DSN string = "postgres://postgres:postgres@localhost:5432/marketDB"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jmoiron/sqlx"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+)
 
 type PostrgeSQL struct {
 	db *sqlx.DB
 }
 
-func New(db *sqlx.DB) (*PostrgeSQL, error) {
-	return &PostrgeSQL{
+func New(db *sqlx.DB) PostrgeSQL {
+	return PostrgeSQL{
 		db: db,
-	}, nil
+	}
 }
 
-func (p *PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) error {
-	quary := `INSERT INTO orders(order_id, fk_user_id)
+func (p PostrgeSQL) CheckOrder(ctx context.Context, userID, orderID string) (bool, error) {
+        fmt.Println("START check order")
+	quary := `SELECT EXISTS 
+        (
+                SELECT *
+                FROM orders
+                WHERE order_number = $1 AND fk_user_id = $2
+        );`
+
+	tx, err := p.db.Beginx()
+	if err != nil {
+		return false, err
+	}
+
+	defer tx.Rollback()
+
+	stmt, err := tx.PreparexContext(ctx, quary)
+	if err != nil {
+		return false, err
+	}
+
+	defer stmt.Close()
+
+	var ok bool
+	if err := stmt.Get(&ok, orderID, userID); err != nil {
+		return false, err
+	}
+
+	return ok, tx.Commit()
+
+}
+
+func (p PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) error {
+        fmt.Println("START Insert order")
+	quary := `INSERT INTO orders(order_number, fk_user_id)
 	VALUES
 	($1, $2);`
 
-	//('657883737','1999-01-08 04:05:06', 'db61d134-aa52-49d9-a006-4e82e4d237ca');`
-
-	tx, err := p.db.Begin()
+	tx, err := p.db.Beginx()
 	if err != nil {
 		return err
 	}
 
 	defer tx.Rollback()
 
-	stmt, err := tx.PrepareContext(ctx, quary)
+	stmt, err := tx.PreparexContext(ctx, quary)
 	if err != nil {
 		return err
 	}
@@ -45,17 +80,24 @@ func (p *PostrgeSQL) InsertOrder(ctx context.Context, userID, orderID string) er
 	defer stmt.Close()
 
 	if _, err := stmt.ExecContext(ctx, orderID, userID); err != nil {
+		if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation {
+			fmt.Println("OK")
+			return market.ErrOrderIsExist
+		}
+		fmt.Println("not OK")
 		return err
 	}
+
+        fmt.Println("not not OK")
 
 	return tx.Commit()
 }
 
-func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.Order, error) {
-	quary := `SELECT order_id, status, accrual, uploaded_at
+func (p PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.Order, error) {
+	quary := `SELECT order_number, status, accrual, uploaded_at
 	FROM orders
 	WHERE fk_user_id = $1
-	ORDER BY uploaded_at;`
+	ORDER BY uploaded_at DESC;`
 
 	tx, err := p.db.Beginx()
 	if err != nil {
@@ -71,25 +113,25 @@ func (p *PostrgeSQL) SelectOrders(ctx context.Context, userID string) ([]model.O
 
 	defer stmt.Close()
 
-	var ordersDTO []dto.OrderDTO
+	var ordersDTO []dto.Order
 
 	err = stmt.Select(&ordersDTO, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	orders, err := dto.OrdersToModel(ordersDTO)
+	orders, err := dto.OrderToModel(ordersDTO...)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Printf("OrdersDTO: %v", ordersDTO)
-	log.Printf("Orders: %v", orders)
+	log.Printf("OrdersDTO: %+v", ordersDTO)
+	log.Printf("Orders: %+v", orders)
 
 	return orders, tx.Commit()
 }
 
-func (p *PostrgeSQL) SelectBalance(ctx context.Context, userID string) (model.Balance, error) {
+func (p PostrgeSQL) SelectBalance(ctx context.Context, userID string) (model.Balance, error) {
 	quary := `SELECT current_balance, withdrawn
 	FROM balances
 	WHERE fk_user_id = $1;`
@@ -116,15 +158,12 @@ func (p *PostrgeSQL) SelectBalance(ctx context.Context, userID string) (model.Ba
 	}
 
 	balance := dto.BalanceToModel(balanceDTO)
-	if err != nil {
-		return model.Balance{}, err
-	}
 
 	return balance, tx.Commit()
 }
 
 func insertWithdrawal(ctx context.Context, db *sqlx.DB, userID string, w dto.WithdrawnDTO) error {
-	quary := `INSERT INTO purchases(order_id, sum, fk_user_id)
+	quary := `INSERT INTO purchases(order_number, sum, fk_user_id)
 	VALUES
 	($1, $2, $3);`
 
@@ -142,6 +181,7 @@ func insertWithdrawal(ctx context.Context, db *sqlx.DB, userID string, w dto.Wit
 
 	defer stmt.Close()
 
+	log.Printf("wDTO INSERT %+v", w)
 	if _, err := stmt.ExecContext(ctx, w.OrderID, w.Sum, userID); err != nil {
 		return err
 	}
@@ -174,7 +214,7 @@ func loadNewBalance(ctx context.Context, db *sqlx.DB, userID string, w dto.Withd
 }
 
 func updateBalance(ctx context.Context, db *sqlx.DB, userID string, b dto.BalanceDTO) (dto.BalanceDTO, error) {
-        quary := `UPDATE balances
+	quary := `UPDATE balances
         SET
                 current_balance = $1,
                 withdrawn = $2
@@ -208,10 +248,14 @@ func updateBalance(ctx context.Context, db *sqlx.DB, userID string, b dto.Balanc
 		return dto.BalanceDTO{}, err
 	}
 
+	if rows.Err() != nil {
+		return dto.BalanceDTO{}, rows.Err()
+	}
+
 	return bNew, tx.Commit()
 }
 
-func (p *PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w model.Withdrawn) (model.Balance, error) {
+func (p PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w model.Withdrawn) (model.Balance, error) {
 	wDTO := dto.WithdrawnToDTO(w)
 
 	bDTO, err := loadNewBalance(ctx, p.db, userID, wDTO)
@@ -223,18 +267,18 @@ func (p *PostrgeSQL) ProcessWithdrawn(ctx context.Context, userID string, w mode
 		return model.Balance{}, err
 	}
 
-        bNew, err := updateBalance(ctx, p.db, userID, bDTO)
-        if err != nil {
-                return model.Balance{}, err
-        }
+	bNew, err := updateBalance(ctx, p.db, userID, bDTO)
+	if err != nil {
+		return model.Balance{}, err
+	}
 
-        b := dto.BalanceToModel(bNew)
+	b := dto.BalanceToModel(bNew)
 
-        return b, nil
+	return b, nil
 }
 
-func (p *PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]model.Withdrawn, error) {
-	quary := `SELECT order_id, sum,  processed_at
+func (p PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]model.Withdrawn, error) {
+	quary := `SELECT order_number, sum, processed_at
 	FROM purchases
 	WHERE fk_user_id = $1
 	ORDER BY processed_at;`
@@ -269,20 +313,3 @@ func (p *PostrgeSQL) SelectWithdrawals(ctx context.Context, userID string) ([]mo
 
 	return withdrawns, tx.Commit()
 }
-
-/*
-{
-          "order": "2377225624",
-          "sum": 500,
-          "processed_at": "2020-12-09T16:09:57+03:00"
-      }
-
-
-      (
-		purchase_id SERIAL PRIMARY KEY,
-		order_id varchar(32) NOT NULL,
-		sum integer NOT NULL,
-		processed_at timestamp DEFAULT NULL,
-		fk_user_id uuid REFERENCES users(user_id) NOT NULL
-	);
-*/

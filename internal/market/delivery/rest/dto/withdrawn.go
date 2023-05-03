@@ -25,9 +25,9 @@ func WithdrawnToDTO(withdrawns ...model.Withdrawn) []Withdrawn {
 
 }
 
-func WithdrawnToModel(w Withdrawn ) model.Withdrawn {
+func WithdrawnToModel(w Withdrawn) model.Withdrawn {
 	return model.Withdrawn{
-		OrderID:     w.OrderID,
-		Sum:         w.Sum,
+		OrderID: w.OrderID,
+		Sum:     w.Sum,
 	}
 }
