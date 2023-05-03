@@ -5,13 +5,10 @@ import (
 	"log"
 
 	arest "github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest"
-	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth/delivery/rest/middleware"
 	mrest "github.com/Skudarnov-Alexander/loyaltyService/internal/market/delivery/rest"
 
 	"github.com/labstack/echo/v4"
 )
-
-
 
 type Server struct {
 	e *echo.Echo
@@ -19,13 +16,13 @@ type Server struct {
 
 func New(authHandler *arest.Handler, marketHandler *mrest.Handler, addr string) Server {
 	e := echo.New()
-        e.Server.Addr = addr
+	e.Server.Addr = addr
 
 	e.POST("/api/user/register", authHandler.RegisterUser(authHandler.LoginUser))
 	e.POST("/api/user/login", authHandler.LoginUser)
 
 	g := e.Group("/api/user")
-	g.Use(middleware.Auth)
+	//g.Use(middleware.Auth)
 
 	g.POST("/orders", marketHandler.PostOrder)
 	g.GET("/orders", marketHandler.GetOrders)
@@ -39,17 +36,17 @@ func New(authHandler *arest.Handler, marketHandler *mrest.Handler, addr string) 
 }
 
 func (s Server) Run() error {
-        log.Printf("HTTP Server is starting: %s", s.e.Server.Addr)
+	log.Printf("HTTP Server is starting: %s", s.e.Server.Addr)
 	if err := s.e.Server.ListenAndServe(); err != nil {
-                log.Printf("HTTP Server [%s] is stopping by err: %s", s.e.Server.Addr, err)   
-                return err
-        }
+		log.Printf("HTTP Server [%s] is stopping by err: %s", s.e.Server.Addr, err)
+		return err
+	}
 
-        return nil
+	return nil
 
 }
 
 func (s Server) Stop(ctx context.Context) error {
-        log.Printf("HTTP Server is stopping: %s", s.e.Server.Addr)
+	log.Printf("HTTP Server is stopping: %s", s.e.Server.Addr)
 	return s.e.Server.Shutdown(ctx)
 }
