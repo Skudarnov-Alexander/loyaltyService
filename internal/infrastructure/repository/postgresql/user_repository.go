@@ -2,6 +2,8 @@ package postgresql
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	error2 "github.com/Skudarnov-Alexander/loyaltyService/internal/error"
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/infrastructure/repository/postgresql/dto"
@@ -26,7 +28,8 @@ func NewUserRepository(db *sqlx.DB) *UserRepository {
 
 func (repo *UserRepository) Create(ctx context.Context, u model.User) (string, error) {
 	quary :=
-		`INSERT INTO users VALUES ($1, $2, $3)
+		`INSERT INTO users (username, password) 
+		VALUES ($1, $2)
 		RETURNING *;`
 
 	tx, err := repo.db.Beginx()
@@ -43,7 +46,7 @@ func (repo *UserRepository) Create(ctx context.Context, u model.User) (string, e
 
 	defer stmt.Close()
 
-	rows, err := stmt.QueryxContext(ctx, u.ID, u.Username, u.HashedPass)
+	rows, err := stmt.QueryxContext(ctx, u.Username, u.HashedPass)
 	if err != nil {
 		if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation {
 			return "", error2.ErrUserIsExist
@@ -59,7 +62,7 @@ func (repo *UserRepository) Create(ctx context.Context, u model.User) (string, e
 
 	var user dto.User
 
-	if err := rows.Scan(&user); err != nil {
+	if err := rows.StructScan(&user); err != nil {
 		return "", err
 	}
 
@@ -67,30 +70,16 @@ func (repo *UserRepository) Create(ctx context.Context, u model.User) (string, e
 		return "", err
 	}
 
-	return user.ID.String(), nil
-}
-
-/*
-func (p PostrgeSQL) CreateUser(ctx context.Context, u model.User) error {
-	if err := createNewUser(ctx, p.db, u); err != nil {
-		return err
+	id, err := user.ID.Value()
+	if err != nil {
+		return "", err
 	}
 
-	if err := createBalance(ctx, p.db, u.ID); err != nil {
-		return err
-	}
-
-	return nil
-
+	return id.(string), nil
 }
-*/
 
-/*
 func (repo *UserRepository) GetByUsername(ctx context.Context, username string) (model.User, error) {
-	log.Printf("SQL Get user start")
-	log.Printf("username: %s", username)
-
-	quary := `SELECT user_id, username, password
+	quary := `SELECT id, username, password
 	FROM users
 	WHERE username = $1`
 
@@ -116,12 +105,16 @@ func (repo *UserRepository) GetByUsername(ctx context.Context, username string) 
 	}
 
 	if rows.Err() != nil {
+		fmt.Printf("rows ERR: %v\n", rows.Err())
 		return model.User{}, rows.Err()
 	}
 
 	var user dto.User
 
-	rows.Next()
+	if ok := rows.Next(); !ok {
+		fmt.Printf("user is not found: %v\n", rows.Err())
+		return model.User{}, error2.ErrUserNotFound
+	}
 
 	err = rows.StructScan(&user)
 	if err != nil {
@@ -129,12 +122,15 @@ func (repo *UserRepository) GetByUsername(ctx context.Context, username string) 
 		return model.User{}, err
 	}
 
-	u, err := dto.UserToModel(user)
+	u, err := user.ToModel()
 	if err != nil {
 		log.Printf("toModel err: %s", err.Error())
 		return model.User{}, err
 	}
 
-	return u, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return model.User{}, err
+	}
+
+	return u, nil
 }
-*/

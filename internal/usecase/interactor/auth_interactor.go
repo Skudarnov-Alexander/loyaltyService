@@ -2,13 +2,17 @@ package interactor
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Skudarnov-Alexander/loyaltyService/internal/model"
+	"github.com/Skudarnov-Alexander/loyaltyService/internal/pkg/jwt"
 )
+
+var SampleSecretKey = []byte("SecretYouShouldHide") //TODO спрятать в конфиги / секретницу
 
 type userRepository interface {
 	Create(ctx context.Context, u model.User) (string, error)
-	//GetByName(ctx context.Context, username string) (model.User, error)
+	GetByUsername(ctx context.Context, username string) (model.User, error)
 }
 
 type balanceRepository interface {
@@ -17,7 +21,7 @@ type balanceRepository interface {
 
 type passHasher interface {
 	Hash(password string) string
-	IsPwdsMatched(savedHashedPwd, pwd string, salt []byte) bool
+	IsPwdsMatched(savedHashedPwd, pwd string) bool
 }
 
 type authInteractor struct {
@@ -34,7 +38,7 @@ func NewAuthInteractor(userRepository userRepository, balanceRepository balanceR
 	}
 }
 
-func (ai *authInteractor) SignUp(ctx context.Context, username, pwd string) error {
+func (ai *authInteractor) SignUp(ctx context.Context, username, pwd string) (string, error) {
 	hashedPass := ai.passHasher.Hash(pwd)
 
 	u := model.User{
@@ -44,44 +48,34 @@ func (ai *authInteractor) SignUp(ctx context.Context, username, pwd string) erro
 
 	id, err := ai.userRepository.Create(ctx, u)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err := ai.balanceRepository.Сreate(ctx, id); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return jwt.GenerateJWT(SampleSecretKey, u)
+
+}
+
+func (ai *authInteractor) LogIn(ctx context.Context, username, pwd string) (string, error) {
+	u, err := ai.userRepository.GetByUsername(ctx, username)
+	if err != nil {
+		return "", err
+	}
+
+	if ok := ai.passHasher.IsPwdsMatched(u.HashedPass, pwd); !ok {
+		return "", errors.New("pass is not match")
+	}
+
+	return jwt.GenerateJWT(SampleSecretKey, u)
+
 }
 
 /*
-func New(userRepo auth.AuthRepository) (*AuthService, error) {
-	hashSalt, err := generateRandomSalt(saltSize)
-	if err != nil {
-		return nil, err
-	}
 
-	return &AuthService{
-		userRepo: userRepo,
-		hashSalt: hashSalt,
-	}, nil
-}
-*/
-
-/*
-func (s *AuthService) SignUp(ctx context.Context, u model.User) error {
-	u.Password = hashPassword(u.Password, s.hashSalt)
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		return err
-	}
-
-	u.ID = uuid.String()
-
-	return s.userRepo.CreateUser(ctx, u)
-}
-
-func (s *AuthService) SignIn(ctx context.Context, u model.User) (string, error) {
+func (ai *authInteractor) SignIn(ctx context.Context, u model.User) (string, error) {
 	user, err := s.userRepo.GetUser(ctx, u.Username)
 	if err != nil {
 		return "", err

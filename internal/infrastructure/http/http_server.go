@@ -3,14 +3,14 @@ package http
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 )
 
 type AuthHTTPController interface {
-	SignUp(c echo.Context) error 
+	HandleSignUp(c echo.Context) error
+	HandleLogIn(c echo.Context) error
 }
 
 type MarketHTTPController interface {
@@ -42,14 +42,7 @@ func (s *EchoHTTPServer) registerAuthGroup() {
 	authGroup := s.e.Group("/api/user")
 
 	authGroup.POST("/register", s.handleRegisterUser)
-	//authGroup.POST("/login", s.handleLoginUser)
-	authGroup.GET("/test", func(c echo.Context) error {
-		return c.JSON(http.StatusAccepted, struct {
-			Msg string `json:"message"`
-		}{
-			Msg: "hello",
-		})
-	})
+	authGroup.POST("/login", s.handleLogInUser)
 }
 
 func (s *EchoHTTPServer) registerMarketGroup() {
@@ -60,14 +53,12 @@ func (s *EchoHTTPServer) registerMarketGroup() {
 }
 
 func (s *EchoHTTPServer) handleRegisterUser(c echo.Context) error {
-	return s.authCtrl.SignUp(c)
+	return s.authCtrl.HandleSignUp(c)
 }
 
-/*
-func (s *EchoHTTPServer) handleLoginUser(c echo.Context) error {
-	return s.authCtrl.LoginUser(c.Request().Context())
+func (s *EchoHTTPServer) handleLogInUser(c echo.Context) error {
+	return s.authCtrl.HandleLogIn(c)
 }
-*/
 
 func (s *EchoHTTPServer) Run(port int) {
 	go func() {

@@ -5,35 +5,15 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Skudarnov-Alexander/loyaltyService/internal/auth"
+	error2 "github.com/Skudarnov-Alexander/loyaltyService/internal/error"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
-/*
-type response struct {
-	Status int    `json:"status"`
-	Msg    string `json:"msg,omitempty"`
-	Token  string `json:"token,omitempty"`
-}
-
-func newResponse(status int, msg, token string) *response {
-	return &response{
-		Status: status,
-		Msg:    msg,
-		Token:  token,
-	}
-}
-
-type Handler struct {
-	service auth.UserService
-}
-
-*/
-
 type authInteractor interface {
-	SignUp(ctx context.Context, username, pwd string) error
+	SignUp(ctx context.Context, username, pwd string) (string, error)
+	LogIn(ctx context.Context, username, pwd string) (string, error)
 }
 
 type AuthHTTPController struct {
@@ -53,17 +33,24 @@ type SignUpRequest struct {
 	Password string `json:"password" validate:"required,ascii"`
 }
 
-/*
-type User struct {
-	ID       string
+type LogInRequest struct {
 	Username string `json:"login" validate:"required,ascii"`
 	Password string `json:"password" validate:"required,ascii"`
-    }
-*/
-func (ac *AuthHTTPController) SignUp(c echo.Context) error {
-	c.Response().Header().Set("Content-Type", "application/json")
+}
 
+type AuthMarket struct {
+	JWT string `json:"jwt"`
+}
+
+// Возможные коды ответа:
+//
+// 200 — пользователь успешно зарегистрирован и аутентифицирован;
+// 400 — неверный формат запроса;
+// 409 — логин уже занят;
+// 500 — внутренняя ошибка сервера.
+func (ac *AuthHTTPController) HandleSignUp(c echo.Context) error {
 	reqData := new(SignUpRequest)
+
 	if err := c.Bind(&reqData); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -74,133 +61,52 @@ func (ac *AuthHTTPController) SignUp(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	if err := ac.authInteractor.SignUp(ctx, reqData.Username, reqData.Password); err != nil {
-		if errors.Is(err, auth.ErrUserIsExist) {
+	token, err := ac.authInteractor.SignUp(ctx, reqData.Username, reqData.Password)
+	if err != nil {
+		if errors.Is(err, error2.ErrUserIsExist) {
 			return echo.NewHTTPError(http.StatusConflict, err.Error())
 		}
 
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.String(http.StatusOK, "new user is created")
-	/*
-		data, err := json.Marshal(user)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+	c.Response().Header().Add("Authorization", token)
 
-		b := bytes.NewBuffer(data)
-
-		body := io.NopCloser(b)
-
-		c.Request().Body = body
-
-		return next(c)
-	*/
+	return c.JSON(http.StatusOK, AuthMarket{
+		JWT: token,
+	})
 }
 
-/*
-Возможные коды ответа:
+// Возможные коды ответа:
+//
+// 200 — пользователь успешно аутентифицирован;
+// 400 — неверный формат запроса;
+// 401 — неверная пара логин/пароль;
+// 500 — внутренняя ошибка сервера.
+func (ac *AuthHTTPController) HandleLogIn(c echo.Context) error {
+	reqData := new(LogInRequest)
 
-- `200` — пользователь успешно зарегистрирован и аутентифицирован;
-- `400` — неверный формат запроса;
-- `409` — логин уже занят;
-- `500` — внутренняя ошибка сервера.
-*/
-/*
-func (ac *AuthHTTPController) LogIn(c echo.Context) error {
-	c.Response().Header().Set("Content-Type", "application/json")
-
-	var user model.User
-
-	if err := c.Bind(&user); err != nil {
+	if err := c.Bind(&reqData); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	token, err := h.service.SignIn(c.Request().Context(), user)
-	if errors.Is(err, auth.ErrUserNotFound) {
-		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+	if err := ac.validator.Struct(reqData); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
+	ctx := c.Request().Context()
+
+	token, err := ac.authInteractor.LogIn(ctx, reqData.Username, reqData.Password)
 	if err != nil {
+		if errors.Is(err, error2.ErrUserNotFound) {
+			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		}
+
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+
 	}
 
 	c.Response().Header().Add("Authorization", token)
 
-	return c.JSON(http.StatusOK, newResponse(http.StatusOK, "auth is successfull", token))
+	return c.String(http.StatusOK, token)
 }
-
-/*
-func (h *Handler) RegisterUser(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		c.Response().Header().Set("Content-Type", "application/json")
-		var user model.User
-
-		if err := c.Bind(&user); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-
-		validate := validator.New()
-		if err := validate.Struct(user); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-
-		err := h.service.SignUp(c.Request().Context(), user)
-		if errors.Is(err, auth.ErrUserIsExist) {
-			return echo.NewHTTPError(http.StatusConflict, err.Error())
-		}
-
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-
-		data, err := json.Marshal(user)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-
-		b := bytes.NewBuffer(data)
-
-		body := io.NopCloser(b)
-
-		c.Request().Body = body
-
-		return next(c)
-
-	}
-}
-
-
-Возможные коды ответа:
-
-- `200` — пользователь успешно зарегистрирован и аутентифицирован;
-- `400` — неверный формат запроса;
-- `409` — логин уже занят;
-- `500` — внутренняя ошибка сервера.
-
-
-func (h *Handler) LoginUser(c echo.Context) error {
-	c.Response().Header().Set("Content-Type", "application/json")
-
-	var user model.User
-
-	if err := c.Bind(&user); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	token, err := h.service.SignIn(c.Request().Context(), user)
-	if errors.Is(err, auth.ErrUserNotFound) {
-		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
-	}
-
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	c.Response().Header().Add("Authorization", token)
-
-	return c.JSON(http.StatusOK, newResponse(http.StatusOK, "auth is successfull", token))
-}
-
-*/

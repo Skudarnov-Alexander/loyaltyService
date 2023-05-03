@@ -40,6 +40,6 @@ func (ph *PassHasher) Hash(password string) string {
 	return hex.EncodeToString(hashedPwdBytes)
 }
 
-func (ph *PassHasher) IsPwdsMatched(savedHashedPwd, pwd string, salt []byte) bool {
+func (ph *PassHasher) IsPwdsMatched(savedHashedPwd, pwd string) bool {
 	return savedHashedPwd == ph.Hash(pwd)
 }
